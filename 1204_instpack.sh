@@ -4,10 +4,7 @@
 
 #!/bin/bash -xe
 
-#https://dziganto.github.io/zeppelin/spark/zeppelinhub/emr/anaconda/tensorflow/shiro/s3/theano/bootstrap%20script/EMR-From-Scratch/
-
-
-# The best place to install packages is /usr/local if you have admin rights and want everyone to use the software
+# install packages in /usr/local if you have admin rights and want everyone to use the software
 
 sudo cd /usr/local
 INSTDR=/usr/local
@@ -51,8 +48,6 @@ export PATH=$INSTDR/anaconda/bin:$PATH
 #              Prepare Boost & DLIB    
 # ----------------------------------------------------------------------
 
-#https://medium.com/@royendgel/boost-boost-python-dlib-python3-on-centos-or-amazon-linux-4039f70a3614
-#https://stackoverflow.com/questions/12578499/how-to-install-boost-on-ubuntu
 # There are always three steps to install software on Linux systems:
 
 # configure — "check"
@@ -108,9 +103,6 @@ cd ../
 # ----------------------------------------------------------------------
 #              Install QuantLib
 # ----------------------------------------------------------------------
-
-# https://www.quantlib.org/install/linux.shtml
-# https://bintray.com/quantlib/releases/QuantLib#release
 
 # Install QuantLib dependencies
 
