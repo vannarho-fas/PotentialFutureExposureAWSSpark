@@ -1,6 +1,6 @@
 # PFE estimation using AWS EMR
 
-**This is a step by step proof of concept for estimating potential future exposure with QuantLib and AWS EMR. 
+**This is a step by step proof of concept for estimating potential future exposure with QuantLib and AWS EMR.**
 
 Amazon EMR provides a managed Hadoop framework that makes it easy, fast, and cost-effective to process vast amounts of data across dynamically scalable Amazon EC2 instances. You can also run these other popular distributed frameworks such as Apache Spark, HBase, Presto, and Flink in Amazon EMR, and interact with data in other AWS data stores such as Amazon S3 and Amazon DynamoDB.
 
@@ -8,7 +8,7 @@ In other words, if you use common big data Apache tools, you should seriously co
 
 That’s not to say it is always easy to set up, though. :sweat:
 
-##Context
+##Context##
 
 _Counterparty risk is the risk that a party to an OTC derivatives contract may fail to perform on its contractual obligations, causing losses to the other party. Credit exposure is the actual loss in the event of a counterparty default.
 
@@ -29,7 +29,7 @@ Estimating PFE involves simulating future market risk scenarios, calculating “
 For an interest rate swap, market risk factor is the underlying forward curve which determines the NPV of the floating leg. For an FxFwd, its the forward interest curves for the two currencies and the forward FX rate.
 
 
-##We will assume you've done the following
+##We will assume you've done the following##
 
 * Set up an AWS account
 * Created a S3 Bucket
