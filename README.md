@@ -6,7 +6,7 @@ Amazon EMR provides a managed Hadoop framework that makes it easy, fast, and cos
 
 In other words, if you use common big data Apache tools, you should seriously consider Amazon EMR because it makes the configuration process as painless as it can be. A big advantage of AWS over other platforms for the enterprise user, especially in highly regulated financial services domains is the wide selection of features including security & permissions. 
 
-That’s not to say it is always easy to set up, though. 
+That’s not to say it is always easy to set up, though. :sweat:
 
 
 
