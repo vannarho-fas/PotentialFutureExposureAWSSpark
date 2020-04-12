@@ -61,11 +61,10 @@ For an interest rate swap, market risk factor is the underlying forward curve wh
 Go to instance page and "connect" to the instance via ssh (using your downloaded key pair)
 
 
-
-
-
-
-
 ## Installing Anaconda, Boost, QuantLib, Quantlib-Swig
+
+Once you're connect to the instance, you'll install the base software required. 
+
+
 
 
