@@ -1,6 +1,6 @@
 # Potential Future Exposure estimation using AWS Elastic Map Reduce (EMR) & Spark
 
-** A step by step proof of concept for estimating potential future exposure ("PFE") with QuantLib and AWS EMR.**
+** A proof of concept for estimating potential future exposure ("PFE") with QuantLib and AWS EMR. **
 
 Amazon EMR provides a managed Hadoop framework that makes it easy, fast, and cost-effective to process vast amounts of data across dynamically scalable Amazon EC2 instances. You can also run these other popular distributed frameworks such as Apache Spark, Zepplin, Hive and interact with data in other AWS data stores such as Amazon S3 and Amazon DynamoDB.
 
