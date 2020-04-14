@@ -121,9 +121,9 @@ Change the destination in the 1304_pfe_visualization.py to your s3 bucket and ru
 
 ![Estimated Potential Exposure](https://raw.githubusercontent.com/fordesmith/PotentialFutureExposureAWSSpark/master/visualisations/simex.png).
 
-![Expected Exposure](https://raw.githubusercontent.com/fordesmith/PotentialFutureExposureAWSSpark/master/visualisations/simex.png).
+![Expected Exposure](https://raw.githubusercontent.com/fordesmith/PotentialFutureExposureAWSSpark/master/visualisations/epex.png).
 
-![Potential Future Exposure - Collatoralised & Uncollateralised](https://raw.githubusercontent.com/fordesmith/PotentialFutureExposureAWSSpark/master/visualisations/simex.png).
+![Potential Future Exposure - Collatoralised & Uncollateralised](https://raw.githubusercontent.com/fordesmith/PotentialFutureExposureAWSSpark/master/visualisations/pfe.png).
 
 
 ## Next steps to extend the POC
