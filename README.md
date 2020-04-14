@@ -119,9 +119,11 @@ After the spark job completes, it will create an "output" folder in your s3 buck
 
 Change the destination in the 1304_pfe_visualization.py to your s3 bucket and run it (e.g. via bash, notebook, ipython terminal). Once we have the time grid and NPV cube in memory,  this script will visualize the simulated exposure paths. The Blue paths are for Collateralised exposures and Red are for Uncollateralised.
 
-![Estimated Potential Exposure ](https://octodex.github.com/images/bannekat.png).
+![Estimated Potential Exposure](https://raw.githubusercontent.com/fordesmith/PotentialFutureExposureAWSSpark/master/visualisations/simex.png).
 
-See the visualisations directory for the files created by the script. 
+![Expected Exposure](https://raw.githubusercontent.com/fordesmith/PotentialFutureExposureAWSSpark/master/visualisations/simex.png).
+
+![Potential Future Exposure - Collatoralised & Uncollateralised](https://raw.githubusercontent.com/fordesmith/PotentialFutureExposureAWSSpark/master/visualisations/simex.png).
 
 
 ## Next steps to extend the POC
