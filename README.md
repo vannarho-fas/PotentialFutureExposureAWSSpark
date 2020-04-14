@@ -109,6 +109,15 @@ Once complete, choose "Image > Create Image" to save an AMI to use for your clus
 
 Go to EMR and "Create Cluster". Go to "Advanced Options". In "software configuration" choose release 6.0.0 plus check "Hadoop" and "Spark". Choose "next". In "Hardware" choose 4 x core nodes. Leave other settings as is. Choose "next". In "Additional Options" choose the AMI you created above. Choose "next". In "Security Options" choose the key pair you created and downloaded. Then "create cluster". 
 
+## Developing the PFE script inputs
+
+
+
+
+
+
+
+
 ## Submitting the spark job
 
 Copy the files in this repo to your s3 bucket and amend the 1304spark-submit.sh file to point to your s3 bucket. Run the file. It will take somewhere from about 7 - 25 minutes for Pyspark job to complete, depending on the hardware spec. It computes a netting set NPV for 5000 simulations across future 454 dates for 2 swaps and 1 FxFwd.  
