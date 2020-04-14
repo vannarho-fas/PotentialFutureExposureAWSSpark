@@ -95,10 +95,37 @@ A firm can often “net” the exposures of different instruments from the same 
 
 Go to instance page and "connect" to the instance via ssh (using your downloaded key pair)
 
-## Installing Anaconda, Boost, QuantLib, Quantlib-Swig
+## Installing Boost, QuantLib and other packages
 
 Once you're connect to the instance, you'll install the base software required. 
 
+ssh into the box using your local PEM file and the specific machine address. e.g. ssh -i /Users/XX/XX.pem ec2-user@ec2-XX-XX-XXX-XXX.ap-southeast-2.compute.amazonaws.com. 
+
+Run the 1304instpack_pip.sh script either by downloading it (e.g. wget yourpath/1304instpack_pip.sh) and running it (e.g. bash ./1304instpack_pip.sh) or by copying the file into your terminal window. Please forgive the liberal use of sudo; this is only a POC, after all. 
+
+Once complete, choose "Image > Create Image" to save an AMI to use for your cluster. 
+
+## Setting up the cluster
+
+Go to EMR and "Create Cluster". Go to "Advanced Options". In "software configuration" choose release 6.0.0 plus check "Hadoop" and "Spark". Choose "next". In "Hardware" choose 4 x core nodes. Leave other settings as is. Choose "next". In "Additional Options" choose the AMI you created above. Choose "next". In "Security Options" choose the key pair you created and downloaded. Then "create cluster". 
+
+## Submitting the spark job
+
+Copy the files in this repo to your s3 bucket and amend the 1304spark-submit.sh file to point to your s3 bucket. Run the file. It will take somewhere from about 7 - 25 minutes for Pyspark job to complete, depending on the hardware spec. It computes a netting set NPV for 5000 simulations across future 454 dates for 2 swaps and 1 FxFwd.  
+
+After the spark job completes, it will create an "output" folder in your s3 bucket. The output files  are time-grid array and NPV cube. 
+
+## Visualising the results
+
+Change the destination in the 1304_pfe_visualization.py to your bucket and run it. Once we have the time grid and NPV cube in memory,  this script will visualize the simulated exposure paths. The Blue paths are for Collateralised exposures and Red are for Uncollateralised.
+
+See the png directory for the files created by the script. 
+
+
+## Next steps to extend the POC
+
+* Add more derivative types (e.g. commodity, credit derivatives) 
+* Extend to and create reports for different counterparties
 
 
 
