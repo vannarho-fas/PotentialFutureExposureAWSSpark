@@ -119,7 +119,7 @@ After the spark job completes, it will create an "output" folder in your s3 buck
 
 Change the destination in the 1304_pfe_visualization.py to your bucket and run it. Once we have the time grid and NPV cube in memory,  this script will visualize the simulated exposure paths. The Blue paths are for Collateralised exposures and Red are for Uncollateralised.
 
-See the png directory for the files created by the script. 
+See the visualisations directory for the files created by the script. 
 
 
 ## Next steps to extend the POC
