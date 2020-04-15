@@ -29,11 +29,11 @@ _Counterparty risk is the risk that a party to an OTC derivatives contract may f
 
 Some of the ways to reduce counterparty risk:
 
-* **Netting:** Offset positive and negative contract values with the same counterparty reduces exposure to that counterparty *
+* **Netting:** Offset positive and negative contract values with the same counterparty reduces exposure to that counterparty 
 
-* **Collateral:** Holding cash or securities against an exposure *
+* **Collateral:** Holding cash or securities against an exposure 
 
-* **Central counterparties (CCP):** Use a third party clearing house as a counterparty between buyer and seller and post margin (see https://www.theice.com/article/clearing/how-clearing-mitigates-risk) *
+* **Central counterparties (CCP):** Use a third party clearing house as a counterparty between buyer and seller and post margin (see https://www.theice.com/article/clearing/how-clearing-mitigates-risk) 
 
 **Potential Future Exposure (PFE)** is a measure of credit risk and is the worst exposure one could have to a counterparty at a certain time in future with a certain level of confidence. For example, for a PFE of 100,000with95 = $100,000 in only 5% of scenarios.
 
