@@ -116,8 +116,11 @@ A spark cluster has n nodes managed by a central master. This allow it offer lar
 
 ## The key aspects of the PFE script for running the simulations
 
-Gather inputs
-* Load modules
+### Gather inputs
+
+#### Load modules
+
+<pre><code>
 
 from pyspark import SparkConf, SparkContext
 from pyspark.mllib.random import RandomRDDs
@@ -128,7 +131,11 @@ import numpy as np
 import math
 import sys
 
-* Define and set start date
+</pre></code>
+
+#### Define and set start date
+
+<pre><code>
 
    broadcast_dict = br_dict.value
     today = py_to_qldate(broadcast_dict['python_today'])
@@ -138,7 +145,11 @@ import sys
     eur_calendar = ql.TARGET()
     eur_dc = ql.ActualActual()
     
-* Load historical libor rates, swap specifications and FxFwd specifications from input file into an RDD and collect the results
+</pre></code>
+
+#### Load historical libor rates, swap specifications and FxFwd specifications from input file into an RDD and collect the results
+
+<pre><code>
 
 def loadLiborFixings(libor_fixings_file):
 
@@ -168,16 +179,19 @@ def load_fxfwds(instruments_file):
         .collect()
     return fxfwds
     
+</pre></code>
     
 ** Daily Libor rates are 3M USD Libor rates for previous years
 ** Swap specifications: commencement date, term, amount, fixed rate, type (pay, receive)
 ** FxFwd specifications: commencement date, term, amount, rate, currency 1, currency 2
 ** Load USD, EUR libor swap curve from input file
 
-
  
-Prepare objects from inputs
-* Build a QuantLib swap and index object
+### Prepare objects from inputs
+
+#### Build a QuantLib swap and index object
+
+</pre></code>
 
 def makeSwap(today, start, maturity, nominal, fixedRate, index, typ=ql.VanillaSwap.Payer):
     calendar = ql.UnitedStates()
@@ -211,9 +225,14 @@ def makeSwap(today, start, maturity, nominal, fixedRate, index, typ=ql.VanillaSw
                           index,
                           spread,
                           index.dayCounter())
+                          
+                          
     return swap, [index.fixingDate(x) for x in floatSchedule if index.fixingDate(x) >= today][:-1]
     
-        # Build QuantLib index object
+#### Build QuantLib index object
+
+<pre><code>
+
     usdlibor3m = ql.USDLibor(ql.Period(3, ql.Months), usd_disc_term_structure)
     # don't need EUR fixings since we don't have a EUR swap
     fixingDates, fixings = loadLiborFixings(libor_fixings_file)
@@ -240,19 +259,29 @@ def makeSwap(today, start, maturity, nominal, fixedRate, index, typ=ql.VanillaSw
     longest_swap_maturity = max([s[0].maturityDate() for s in swaps])
     broadcast_dict['longest_swap_maturity'] = ql_to_datetime(longest_swap_maturity)
     
-* Generate a matrix of normally distributed random numbers and spread them across the cluster
+ </pre></code>
+    
+#### Generate a matrix of normally distributed random numbers and spread them across the cluster
 
-    randArrayRDD = RandomRDDs.normalVectorRDD(sc, Nsim, len(T), NPartitions, seed=1)
+<pre><code>
+  
+  randArrayRDD = RandomRDDs.normalVectorRDD(sc, Nsim, len(T), NPartitions, seed=1)
 
+</pre></code>
 
-* Define the NPV cube array
+#### Define the NPV cube array
+
+<pre><code>
 
     npv_cube = randArrayRDD.map(lambda p: (calc_exposure(p,T,br_dict)))
     # write out the npv cube, remove '[' and ']' added by numpy array to ease parsing later
     npv_cube.coalesce(1).saveAsTextFile(output_dir + '/npv_cube')
     
+</pre></code>
     
-* Hull White parameter estimations to generate USD & EUR discount factors
+#### Hull White parameter estimations to generate USD & EUR discount factors
+
+<pre><code>
 
     def gamma(t):
         forwardRate = usd_t0_curve.forwardRate(t, t, ql.Continuous, ql.NoFrequency).rate()
@@ -276,8 +305,12 @@ def makeSwap(today, start, maturity, nominal, fixedRate, index, typ=ql.VanillaSw
     spotmat = np.zeros(shape=(len(time_grid)))
     spotmat[:] = eurusd_fx_spot
     
-    
-Loop through dates and define NPVs (including  Garman-Kohlagen process to build FX rate simulation for FxFwd)
+</pre></code>
+
+#### Loop through dates and define NPVs (including  Garman-Kohlagen process to build FX rate simulation for FxFwd)
+
+
+<pre><code>
 
     for iT in range(1, len(time_grid)):
         mean = usd_rmat[iT - 1] * np.exp(- a * (time_grid[iT] - time_grid[iT - 1])) + \
@@ -357,9 +390,10 @@ Loop through dates and define NPVs (including  Garman-Kohlagen process to build 
             collateral_posted = 0.
         # collateralized netting set NPV
         npvMat[iT,1] = nettingset_npv - collateral_held
+        
     return np.array2string(npvMat, formatter={'float_kind':'{0:.6f}'.format})
 
-
+</pre></code>
 
 ## Submitting the spark job
 
