@@ -111,7 +111,7 @@ Go to EMR and "Create Cluster". Go to "Advanced Options". In "software configura
 
 A spark cluster has n nodes managed by a central master. This allow it offer large scale parallel processing. 
 
-![Spark Cluster Diagram](https://raw.githubusercontent.com/fordesmith/PotentialFutureExposureAWSSpark/master/visualisations/cluster_overview.png).
+![Spark Cluster Diagram](https://raw.githubusercontent.com/fordesmith/PotentialFutureExposureAWSSpark/master/visualisations/cluster-overview.png).
 
 
 ## Developing the PFE script inputs
