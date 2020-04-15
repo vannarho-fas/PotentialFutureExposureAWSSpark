@@ -114,7 +114,7 @@ A spark cluster has n nodes managed by a central master. This allow it offer lar
 ![Spark Cluster Diagram](https://raw.githubusercontent.com/fordesmith/PotentialFutureExposureAWSSpark/master/visualisations/cluster-overview.png).
 
 
-## Developing the PFE script inputs
+## The key aspects of the PFE script for running the simulations
 
 Gather inputs
 * Define and set start date
