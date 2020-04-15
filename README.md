@@ -116,6 +116,24 @@ A spark cluster has n nodes managed by a central master. This allow it offer lar
 
 ## Developing the PFE script inputs
 
+Gather inputs
+* Define and set start date
+* Load historical libor rates, swap specifications and FxFwd specifications from input file into an RDD and collect the results
+** Daily Libor rates are 3M USD Libor rates for previous years
+** Swap specifications: commencement date, term, amount, fixed rate, type (pay, receive)
+** FxFwd specifications: commencement date, term, amount, rate, currency 1, currency 2
+** Load USD, EUR libor swap curve from input file
+ 
+Prepare objects from inputs
+* Build a QuantLib swap and index object
+* Generate a matrix of normally distributed random numbers and spread them across the cluster
+* Define the NPV cube array
+* Hull White parameter estimations to generate USD & EUR discount factors
+* Use Garman-Kohlagen process to build FX rate simulation for FxFwd
+ 
+Loop through dates and define NPVs
+* X
+* X
 
 
 ## Submitting the spark job
