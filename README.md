@@ -99,7 +99,7 @@ Go to instance page and "connect" to the instance via ssh (using your downloaded
 
 Once you're connect to the instance, you'll install the base software required. 
 
-ssh into the box using your local PEM file and the specific machine address. e.g. ssh -i /Users/XX/XX.pem ec2-user@ec2-XX-XX-XXX-XXX.ap-southeast-2.compute.amazonaws.com. 
+ssh into the box using your local PEM file and the specific machine address. e.g. `ssh -i /Users/XX/XX.pem ec2-user@ec2-XX-XX-XXX-XXX.ap-southeast-2.compute.amazonaws.com`. 
 
 Run the 1304instpack_pip.sh script either by downloading it (e.g. `wget https://raw.githubusercontent.com/fordesmith/PotentialFutureExposureAWSSpark/master/1304instpack_pip.sh`) and running it (e.g. bash ./1304instpack_pip.sh) or by copying the file into your terminal window. Please forgive the liberal use of sudo; this is only a POC, after all. 
 
@@ -109,12 +109,12 @@ Once complete, choose "Image > Create Image" to save an AMI to use for your clus
 
 Go to EMR and "Create Cluster". Go to "Advanced Options". In "software configuration" choose release 6.0.0 plus check "Hadoop" and "Spark". Choose "next". In "Hardware" choose 4 x core nodes. Leave other settings as is. Choose "next". In "Additional Options" choose the AMI you created above. Choose "next". In "Security Options" choose the key pair you created and downloaded. Then "create cluster". 
 
+A spark cluster has n nodes managed by a central master. This allow it offer large scale parallel processing. 
+
+![Spark Cluster Diagram](https://raw.githubusercontent.com/fordesmith/PotentialFutureExposureAWSSpark/master/visualisations/cluster_overview.png).
+
+
 ## Developing the PFE script inputs
-
-
-
-
-
 
 
 
