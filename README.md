@@ -9,7 +9,7 @@ This will cover:
 
 ## Context
 
-The first decade of the 21st Century was  disastrous for financial institutions, derivatives and risk management. Counterparty credit risk has become the key element of financial risk management, highlighted by the bankruptcy of the investment bank Lehman Brothers and failure of other high profile institutions such as Bear Sterns, AIG, Fannie Mae and Freddie Mac. The sudden realisation of extensive counterparty risks has severely compromised the health of global financial markets. Counterparty risk and the estimate of potential future expsoure is now a key problem for all financial institutions.
+The first decade of the 21st Century was  disastrous for financial institutions, derivatives and risk management. Counterparty credit risk has become the key element of financial risk management, highlighted by the bankruptcy of the investment bank Lehman Brothers and failure of other high profile institutions such as Bear Sterns, AIG, Fannie Mae and Freddie Mac. The sudden realisation of extensive counterparty risks severely compromised the health of global financial markets and, as driven by regulators, the estimate of potential future exposure is now a key task for all financial institutions.
 
 Over-the-counter ("OTC") products are traded (and privately negotiated) directly between two parties, without going through an exchange or other intermediary. The key types of OTC products are:
 
