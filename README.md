@@ -435,6 +435,10 @@ s3://YOURS3BUCKET/output
 
 Change the destination in the 1304_pfe_visualization.py to your s3 bucket and run it (e.g. via bash, notebook, ipython terminal). Once we have the time grid and NPV cube in memory,  this script will visualize the simulated exposure paths. The Blue paths are for Collateralised exposures and Red are for Uncollateralised.
 
+The progran will output something like this:
+* Maximum Uncollateralized PFE:306216.620742
+* Maximum Collateralized PFE:246123.643434
+
 ![Estimated Potential Exposure](https://raw.githubusercontent.com/fordesmith/PotentialFutureExposureAWSSpark/master/visualisations/simex.png).
 
 ![Expected Exposure](https://raw.githubusercontent.com/fordesmith/PotentialFutureExposureAWSSpark/master/visualisations/epex.png).
