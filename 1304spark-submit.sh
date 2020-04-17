@@ -23,4 +23,4 @@ s3://pfepoc/usd-libor-swap-curve.csv \
 s3://pfepoc/eur-libor-swap-curve.csv \
 s3://pfepoc/USD3MLibor-Fixings.csv \
 s3://pfepoc/instruments.csv \
-s3://pfepoc/output2
+s3://pfepoc/output
