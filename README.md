@@ -107,7 +107,7 @@ Once complete, choose "Image > Create Image" to save an AMI to use for your clus
 
 ## Setting up the cluster
 
-Go to EMR and "Create Cluster". Go to "Advanced Options". In "software configuration" choose release 6.0.0 plus check "Hadoop" and "Spark". Choose "next". In "Hardware" choose 4 x core nodes. Leave other settings as is. Choose "next". In "Additional Options" choose the AMI you created above. Choose "next". In "Security Options" choose the key pair you created and downloaded. Then "create cluster". 
+Go to EMR and "Create Cluster". Go to "Advanced Options". In "software configuration" choose release 6.0.0 plus check "Hadoop" and "Spark". Choose "next". In "Hardware" choose 4 x core nodes. Choose servers with at least 16GB memory. Leave other settings as is. Choose "next". In "Additional Options" choose the AMI you created above. Choose "next". In "Security Options" choose the key pair you created and downloaded. Then "create cluster". 
 
 A spark cluster has n nodes managed by a central master. This allow it offer large scale parallel processing. 
 
@@ -199,7 +199,7 @@ def load_fxfwds(instruments_file):
 
 #### Build a QuantLib swap and index object
 
-</pre></code>
+<pre><code>
 
 def makeSwap(today, start, maturity, nominal, fixedRate, index, typ=ql.VanillaSwap.Payer):
     calendar = ql.UnitedStates()
@@ -237,6 +237,8 @@ def makeSwap(today, start, maturity, nominal, fixedRate, index, typ=ql.VanillaSw
                           
     return swap, [index.fixingDate(x) for x in floatSchedule if index.fixingDate(x) >= today][:-1]
     
+</pre></code>
+
 #### Build QuantLib index object
 
 <pre><code>
