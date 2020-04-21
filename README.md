@@ -409,7 +409,7 @@ def makeSwap(today, start, maturity, nominal, fixedRate, index, typ=ql.VanillaSw
 
 ## Submitting the spark job
 
-Copy the files in this repo to your s3 bucket and amend the 1304spark-submit.sh file to point to your s3 bucket. Run the file. It will take somewhere from about 7 - 25 minutes for Pyspark job to complete, depending on the hardware spec. It computes a netting set NPV for 5000 simulations across future 454 dates for 2 swaps and 1 FxFwd.  
+Copy the files in this repo to your s3 bucket and amend the 1304spark-submit.sh file to point to your s3 bucket. Run the file. It will take somewhere from about 10 - 30 minutes for the Spark job to complete, depending on the hardware spec. It computes a netting set NPV for 5000 simulations across future 454 dates for 2 swaps and 1 FxFwd.  
 
 After the spark job completes, it will create an "output" folder in your s3 bucket. The output files  are time-grid array and NPV cube. 
 
@@ -445,6 +445,8 @@ s3://pfe2020/1504_INSTRUMENTS.csv \
 s3://pfe2020/output1504
 
 </pre></code>
+
+Note: this cluster design has not been optimised and is one of the areas I'd like to explore further. 
 
 ## Visualising the results
 
