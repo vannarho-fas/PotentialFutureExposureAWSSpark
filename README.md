@@ -116,8 +116,8 @@ A spark cluster has n nodes managed by a central master. This allow it offer lar
 ## Creating the input files
 
 The inputs needed for this POC are: 
-* Historical data - in this case for the interest rate swaps, 3M USD / Libor fixings
-* Future LIBOR curves for USD and EUR (in this case out to 2070)
+* Historical data - in this case for the interest rate swaps, 3M USD / Libor fixings e.g. from here: https://fred.stlouisfed.org/series/USD3MTD156N
+* Future LIBOR swap curves for USD and EUR (in this case out to 2070)
 * The list of instruments
 
 If you are adjusting the files here or developing your own, you will need to formats dates as YYYY-MM-DD otherwise QuantLib won`t be able to parse the data. 
