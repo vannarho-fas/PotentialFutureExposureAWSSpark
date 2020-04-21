@@ -440,8 +440,8 @@ Change the destination in the 1304_pfe_visualization.py to your s3 bucket and ru
 
 The progran will output something like this:
 
-# Maximum Uncollateralised PFE: USD$899,797
-# Maximum Collateralised PFE: USD$779,188
+* Maximum Uncollateralised PFE: USD$899,797
+* Maximum Collateralised PFE: USD$779,188
 
 ![Estimated Potential Exposure](https://raw.githubusercontent.com/fordesmith/PotentialFutureExposureAWSSpark/master/visualisations/simex.png).
 
