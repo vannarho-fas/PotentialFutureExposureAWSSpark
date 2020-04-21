@@ -41,7 +41,7 @@ _More high level context here: https://www.edupristine.com/blog/otc-derivatives.
 
 ### Amazon EMR & PFE
 
-EMR provides a managed Hadoop framework that makes it easy, fast, and cost-effective to process vast amounts of data across dynamically scalable Amazon EC2 instances, like the data analysis required to estimate FPE. You can also run these other popular distributed frameworks such as Apache Spark, Zepplin, Hive and interact with data in other AWS data stores such as Amazon S3 and Amazon DynamoDB.
+EMR provides a managed Hadoop framework that makes it easy, fast, and cost-effective to process vast amounts of data across dynamically scalable Amazon EC2 instances, like the data analysis required to estimate FPE. You can also run other popular distributed frameworks such as Apache Spark, Zepplin, Hive and interact with data in other AWS data stores such as Amazon S3 and Amazon DynamoDB.
 
 If you use common big data Apache tools, consider Amazon EMR because it simplifies the configuration process. A big advantage of AWS over other platforms for the enterprise user, especially in highly regulated financial services domains, are the robust security & permissions features. 
 
