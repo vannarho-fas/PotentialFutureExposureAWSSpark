@@ -95,13 +95,15 @@ A firm can often “net” the exposures of different instruments from the same 
 
 Go to instance page and "connect" to the instance via ssh (using your downloaded key pair)
 
-## Installing Boost, QuantLib and other packages
+## Installing Boost, QuantLib and other packages - Creating the Amazon Mahcine Image ("AMI")
 
 Once you're connect to the instance, you'll install the base software required. 
 
 ssh into the box using your local PEM file and the specific machine address. e.g. `ssh -i /Users/XX/XX.pem ec2-user@ec2-XX-XX-XXX-XXX.ap-southeast-2.compute.amazonaws.com`. 
 
-Run the 1304instpack_pip.sh script either by downloading it (e.g. `wget https://raw.githubusercontent.com/fordesmith/PotentialFutureExposureAWSSpark/master/1304instpack_pip.sh`) and running it (e.g. bash ./1304instpack_pip.sh) or by copying the file into your terminal window. Please forgive the liberal use of sudo; this is only a POC, after all. 
+Run the 1504instpack_pip.sh script either by downloading it (e.g. `wget https://raw.githubusercontent.com/fordesmith/PotentialFutureExposureAWSSpark/master/1304instpack_pip.sh`) and running it (e.g. bash ./1304instpack_pip.sh) or by copying the file into your terminal window. Please forgive the liberal use of sudo; this is only a POC, after all. 
+
+An Amazon Machine Image (AMI) provides the base packages required for the cluster instance. 
 
 Once complete, choose "Image > Create Image" to save an AMI to use for your cluster. 
 
