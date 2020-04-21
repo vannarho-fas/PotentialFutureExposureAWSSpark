@@ -6,9 +6,10 @@
 
 
 # ----------------------------------------------------------------------
-#              Install Tools        
+#              Install Dev Tools        
 # ----------------------------------------------------------------------
 
+echo "Install Devtools"
 yum groupinstall -y "Development Tools"
 amazon-linux-extras install -y epel
 yum install -y python3-pip
@@ -31,6 +32,8 @@ pip3 install graphviz
 pip3 install emacs 
 pip3 install PyLaTeX
 pip3 install latexpages
+pip3 install pypandoc
+pip3 install pyspark
 
 # install
 
