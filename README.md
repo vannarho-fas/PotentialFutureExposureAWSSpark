@@ -113,6 +113,14 @@ A spark cluster has n nodes managed by a central master. This allow it offer lar
 
 ![Spark Cluster Diagram](https://raw.githubusercontent.com/fordesmith/PotentialFutureExposureAWSSpark/master/visualisations/cluster-overview.png).
 
+## Creating the input files
+
+The inputs needed for this POC are: 
+* Historical data - in this case for the interest rate swaps, 3M USD / Libor fixings
+* Future LIBOR curves for USD and EUR (in this case out to 2070)
+* The list of instruments
+
+If you are adjusting the files here or developing your own, you will need to formats dates as YYYY-MM-DD otherwise QuantLib won`t be able to parse the data. 
 
 ## The key aspects of the PFE script for running the simulations
 
@@ -436,7 +444,7 @@ s3://pfe2020/output1504
 
 ## Visualising the results
 
-Change the destination in the 1304_pfe_visualization.py to your s3 bucket and run it (e.g. via bash, notebook, ipython terminal). Once we have the time grid and NPV cube in memory,  this script will visualize the simulated exposure paths. The Blue paths are for Collateralised exposures and Red are for Uncollateralised.
+Change the destination in the 1504_POC_PLOT.py to your s3 bucket and run it (e.g. via bash, notebook, ipython terminal). Once we have the time grid and NPV cube in memory,  this script will visualize the simulated exposure paths. The Blue paths are for Collateralised exposures and Red are for Uncollateralised.
 
 The progran will output something like this:
 
