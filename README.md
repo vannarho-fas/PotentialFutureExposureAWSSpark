@@ -403,13 +403,16 @@ After the spark job completes, it will create an "output" folder in your s3 buck
 
 <pre><code>
 
+# Adjust environment variables as needed
 LD_LIBRARY_PATH=/usr/local/lib
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH
 export PYSPARK_DRIVER_PYTHON=/usr/bin/python3
-export PYSPARK_PYTHON=/usr/bin/python3
+export PYSPARK_PYTHON=python3
 export PYTHONPATH=/usr/bin/python3
 
-spark-submit \
+
+# submit Spark job - adjust s3 bucket, filenames and scenario variables as needed
+sudo spark-submit \
 --deploy-mode client \
 --master yarn \
 --conf spark.driver.extraLibraryPath="${LD_LIBRARY_PATH}" \
@@ -419,15 +422,15 @@ spark-submit \
 --executor-memory 16G \
 --conf spark.driver.memoryOverhead=1280 \
 --driver-memory 16G \
---executor-cores 4 \
---driver-cores 4 \
+--executor-cores 16 \
+--driver-cores 16 \
 --conf spark.default.parallelism=168 \
-s3://YOURS3BUCKET/1304_PFE_SPARK.py 5000 48 0.376739 0.0209835 \
-s3://YOURS3BUCKET/usd-libor-swap-curve.csv \
-s3://YOURS3BUCKET/eur-libor-swap-curve.csv \
-s3://YOURS3BUCKET/USD3MLibor-Fixings.csv \
-s3://YOURS3BUCKET/instruments.csv \
-s3://YOURS3BUCKET/output
+s3://pfe2020/1504_PFE_CALC.py 5000 48 0.376739 0.0209835 \
+s3://pfe2020/1504_USD_LIB_SWAP_CURVE.csv \
+s3://pfe2020/1504_EUR_LIB_SWAP_CURVE.csv \
+s3://pfe2020/1504_USD3MTD156N.csv \
+s3://pfe2020/1504_INSTRUMENTS.csv \
+s3://pfe2020/output1504
 
 </pre></code>
 
@@ -436,8 +439,9 @@ s3://YOURS3BUCKET/output
 Change the destination in the 1304_pfe_visualization.py to your s3 bucket and run it (e.g. via bash, notebook, ipython terminal). Once we have the time grid and NPV cube in memory,  this script will visualize the simulated exposure paths. The Blue paths are for Collateralised exposures and Red are for Uncollateralised.
 
 The progran will output something like this:
-* Maximum Uncollateralized PFE:306216.620742
-* Maximum Collateralized PFE:246123.643434
+
+# Maximum Uncollateralised PFE: USD$899,797
+# Maximum Collateralised PFE: USD$779,188
 
 ![Estimated Potential Exposure](https://raw.githubusercontent.com/fordesmith/PotentialFutureExposureAWSSpark/master/visualisations/simex.png).
 
