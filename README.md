@@ -1,6 +1,6 @@
 # Potential Future Exposure estimation using AWS Elastic Map Reduce & Spark
 
-** A proof of concept for estimating potential future exposure ("PFE") with QuantLib and AWS Elastic Map Reduce ("EMR"). **
+*A proof of concept for estimating potential future exposure ("PFE") with QuantLib and AWS Elastic Map Reduce ("EMR"). 
 
 This will cover:
 * The methods used for determing the potential exposure and different time periods for different OTC traded products
