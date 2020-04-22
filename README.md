@@ -466,7 +466,19 @@ The progran will output something like this:
 
 ## Planned steps to extend the POC
 
-* Add more derivative types (e.g. commodity, credit derivatives) 
+* Add more derivative types e.g. 
+** Instrument Mi i S Ei Interest rate or credit default swap maturing in 10 years 
+** 10-year interest rate swap, forward starting in 5 years 
+** Forward rate agreement for time period starting in 6 months and ending in 12 months 
+** Cash-settled European swaption referencing 5-year interest rate swap with exercise date in 6 months
+** Physically-settled European swaption referencing 5-year interest rate swap with exercise date in 6 months
+** Bermudan swaption with annual exercise dates 
+** Interest rate cap or floor specified for semi-annual interest rate with maturity
+** Option on a bond maturing in 5 years with the latest exercise date in 1 year 
+** 3-month Eurodollar futures that matures in 1 year  
+** Futures on 20-year treasury bond that matures in 2 years 
+** 6-month option on 2-year futures on 20-year treasury bond 
+
 * Extend to and create reports for different counterparties
 * Tune the spark cluster so it performs faster
 
