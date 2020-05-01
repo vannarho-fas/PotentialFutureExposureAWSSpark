@@ -109,9 +109,24 @@ Once complete, choose "Image > Create Image" to save an AMI to use for your clus
 
 ## Setting up the cluster
 
-Go to EMR and "Create Cluster". Go to "Advanced Options". In "software configuration" choose release 6.0.0 plus check "Hadoop", "Hive", "Hue" and "Spark". Choose "next". In "Hardware" choose 4 x core nodes. Choose servers with at least 16GB memory. Leave other settings as is. Choose "next". In "Additional Options" choose the AMI you created above. Choose "next". In "Security Options" choose the key pair you created and downloaded. Then "create cluster". 
+Go to EMR and "Create Cluster". Go to "Advanced Options". In "software configuration" choose release 6.0.0 plus check "Hadoop", "Hive", "Hue", "Zepplin" and "Spark". Choose "next". In "Hardware" choose 4 x core nodes. Choose servers with at least 16GB memory. 
+
+For my test I used the following config: 
+** Executors: tried both 4 and 14 servers
+m5a.4xlarge
+16 vCore, 64 GiB memory, EBS only storage
+EBS Storage:256 GiB
+
+** Driver / Master: 1
+m5.xlarge
+4 vCore, 16 GiB memory, EBS only storage
+EBS Storage:64 GiB
+
+Leave other settings as is. Choose "next". In "Additional Options" choose the AMI you created above. Choose "next". In "Security Options" choose the key pair you created and downloaded. Then "create cluster". 
 
 A spark cluster has n nodes managed by a central master. This allows it offer large scale parallel processing. 
+
+For the example below, the job completes in 1 minute with 14 workers and 1.8 minutes with 4 workers. Note I haven`t optimised the job, so you may be able to make it run faster. 
 
 ![Spark Cluster Diagram](https://raw.githubusercontent.com/fordesmith/PotentialFutureExposureAWSSpark/master/visualisations/cluster-overview.png).
 
@@ -273,11 +288,11 @@ def makeSwap(today, start, maturity, nominal, fixedRate, index, typ=ql.VanillaSw
     
  </pre></code>
     
-#### Generate a matrix of normally distributed random numbers and spread them across the cluster
+#### Generate a matrix of normally distributed random numbers and spread them across the cluster. I've used the default settings from Spark for the partitions. 
 
 <pre><code>
   
-  randArrayRDD = RandomRDDs.normalVectorRDD(sc, Nsim, len(T), NPartitions, seed=1)
+  randArrayRDD = RandomRDDs.normalVectorRDD(sc, Nsim, len(T), seed=1)
 
 </pre></code>
 
@@ -285,9 +300,13 @@ def makeSwap(today, start, maturity, nominal, fixedRate, index, typ=ql.VanillaSw
 
 <pre><code>
 
-    npv_cube = randArrayRDD.map(lambda p: (calc_exposure(p,T,br_dict)))
+    npv_list = randArrayRDD.map(lambda p: (calc_exposure(p, T, br_dict))).collect()
+    
+    npv_dataframe = sc.parallelize(npv_list)
+    
     # write out the npv cube, remove '[' and ']' added by numpy array to ease parsing later
-    npv_cube.coalesce(1).saveAsTextFile(output_dir + '/npv_cube')
+    
+    npv_dataframe.coalesce(1).saveAsTextFile(output_dir + '/npv_cube')
     
 </pre></code>
     
@@ -409,18 +428,23 @@ def makeSwap(today, start, maturity, nominal, fixedRate, index, typ=ql.VanillaSw
 
 ## Submitting the spark job
 
-Copy the files in this repo to your s3 bucket and amend the 1304spark-submit.sh file to point to your s3 bucket. Run the file. It will take somewhere from about 10 - 30 minutes for the Spark job to complete, depending on the hardware spec. It computes a netting set NPV for 5000 simulations across future 454 dates for 2 swaps and 1 FxFwd.  
+Copy the files in this repo to your s3 bucket and amend the 1304spark-submit.sh file to point to your s3 bucket. Run the file. It will take somewhere from about 1-5 minutes for the Spark job to complete, depending on the hardware spec. It computes a netting set NPV for 5000 simulations across future 454 dates for 2 swaps and 1 FxFwd.  
 
 After the spark job completes, it will create an "output" folder in your s3 bucket. The output files  are time-grid array and NPV cube. 
 
 <pre><code>
 
 # Adjust environment variables as needed
-LD_LIBRARY_PATH=/usr/local/lib
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH
+# LD_LIBRARY_PATH=/usr/local/lib
+# export LD_LIBRARY_PATH=$LD_LIBRARY_PATH
 export PYSPARK_DRIVER_PYTHON=/usr/bin/python3
 export PYSPARK_PYTHON=python3
 export PYTHONPATH=/usr/bin/python3
+export HADOOP_CONF_DIR=$HADOOP_HOME/etc/hadoop
+export YARN_CONF_DIR=$HADOOP_HOME/etc/hadoop
+export LD_LIBRARY_PATH=/usr/lib/hadoop/lib/native
+export SPARK_HOME=/usr/lib/spark
+
 
 
 # submit Spark job - adjust s3 bucket, filenames and scenario variables as needed
@@ -429,20 +453,20 @@ sudo spark-submit \
 --master yarn \
 --conf spark.driver.extraLibraryPath="${LD_LIBRARY_PATH}" \
 --conf spark.executorEnv.LD_LIBRARY_PATH="${LD_LIBRARY_PATH}"  \
---num-executors 4 \
---conf spark.executor.memoryOverhead=1280 \
---executor-memory 16G \
---conf spark.driver.memoryOverhead=1280 \
---driver-memory 16G \
+--num-executors 2 \
+--conf spark.executor.memoryOverhead=5G \
+--executor-memory 50G \
+--conf spark.driver.memoryOverhead=2G \
+--driver-memory 14G \
 --executor-cores 16 \
---driver-cores 16 \
+--driver-cores 4 \
 --conf spark.default.parallelism=168 \
 s3://pfe2020/1504_PFE_CALC.py 5000 48 0.376739 0.0209835 \
 s3://pfe2020/1504_USD_LIB_SWAP_CURVE.csv \
 s3://pfe2020/1504_EUR_LIB_SWAP_CURVE.csv \
 s3://pfe2020/1504_USD3MTD156N.csv \
 s3://pfe2020/1504_INSTRUMENTS.csv \
-s3://pfe2020/output1504
+s3://pfe2020/output0105
 
 </pre></code>
 
@@ -454,8 +478,8 @@ Change the destination in the 1504_POC_PLOT.py to your s3 bucket and run it (e.g
 
 The progran will output something like this:
 
-* Maximum Uncollateralised PFE: USD$899,797
-* Maximum Collateralised PFE: USD$779,188
+* Maximum Uncollateralised PFE @95: $895,831
+* Maximum Collateralised PFE @95:$778,937
 
 ![Estimated Potential Exposure](https://raw.githubusercontent.com/fordesmith/PotentialFutureExposureAWSSpark/master/visualisations/simex.png).
 
@@ -467,12 +491,12 @@ The progran will output something like this:
 ## Planned steps to extend the POC
 
 * Add more derivative types e.g. 
-** Instrument Mi i S Ei Interest rate or credit default swap maturing in 10 years 
+** Credit default swap maturing in 10 years 
 ** 10-year interest rate swap, forward starting in 5 years 
-** Forward rate agreement for time period starting in 6 months and ending in 12 months 
+** Forward rate agreement for NYMEX gas for a time period starting in 6 months and ending in 12 months 
 ** Cash-settled European swaption referencing 5-year interest rate swap with exercise date in 6 months
 ** Physically-settled European swaption referencing 5-year interest rate swap with exercise date in 6 months
-** Bermudan swaption with annual exercise dates 
+** Bermudan swaption for commodity forward with annual exercise dates 
 ** Interest rate cap or floor specified for semi-annual interest rate with maturity
 ** Option on a bond maturing in 5 years with the latest exercise date in 1 year 
 ** 3-month Eurodollar futures that matures in 1 year  
