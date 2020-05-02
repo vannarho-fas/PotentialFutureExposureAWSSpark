@@ -12,7 +12,12 @@
 echo "Install Devtools"
 yum groupinstall -y "Development Tools"
 amazon-linux-extras install -y epel
+yum install -y epel-release
 yum install -y python3-pip
+yum install -y python3-devel
+yum install -y lzo-devel
+yum install -y lzo-minilzo
+pip3 install python-lzo
 
 # ----------------------------------------------------------------------
 #              Install Boost  
@@ -32,12 +37,11 @@ pip3 install graphviz
 pip3 install emacs 
 pip3 install PyLaTeX
 pip3 install latexpages
-pip3 install pypandoc
-pip3 install pyspark
+
 
 # install
 
-echo "Install QuantLib dependencies"
+echo "Install QuantLib"
 pip3 install QuantLib-Python
 
 # ----------------------------------------------------------------------
@@ -45,12 +49,14 @@ pip3 install QuantLib-Python
 # ----------------------------------------------------------------------
 
 echo " Install Additional Packages"
+pip3 install wheel
 pip3 install pypandoc
 pip3 install pyspark
 pip3 install pandas
 pip3 install matplotlib
 pip3 install boto3
 pip3 install cairocffi
+pip3 install pytables
 
 # ----------------------------------------------------------------------
 #                        Environment vars          

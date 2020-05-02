@@ -8,6 +8,8 @@ import datetime as dt
 import numpy as np
 import math
 import sys
+from boto3.session import Session
+
 
 # Used in loading the various input text files
 def is_number(s):
@@ -17,17 +19,19 @@ def is_number(s):
     except ValueError:
         return False
 
+
 # QuantLib date to Python date
 def ql_to_datetime(d):
     return dt.datetime(d.year(), d.month(), d.dayOfMonth())
+
 
 # Python date to QuantLib date
 def py_to_qldate(d):
     return ql.Date(d.day, d.month, d.year)
 
+
 # Loads libor fixings from input file into an RDD and then collects the results
 def loadLiborFixings(libor_fixings_file):
-
     libor_fixings = sc.textFile(libor_fixings_file) \
         .map(lambda line: line.split(",")) \
         .filter(lambda r: is_number(r[1])) \
@@ -37,23 +41,26 @@ def loadLiborFixings(libor_fixings_file):
     fixings = libor_fixings.map(lambda r: r[1]).collect()
     return fixingDates, fixings
 
+
 # Loads input swap specifications from input file into an RDD and then collects the results
 def load_swaps(instruments_file):
     swaps = sc.textFile(instruments_file) \
-            .map(lambda line: line.split(",")) \
-            .filter(lambda r: r[0] == 'IRS') \
-            .map(lambda line: (str(line[1]), str(line[2]), float(line[3]), float(line[4]), str(line[5])))\
-            .collect()
+        .map(lambda line: line.split(",")) \
+        .filter(lambda r: r[0] == 'IRS') \
+        .map(lambda line: (str(line[1]), str(line[2]), float(line[3]), float(line[4]), str(line[5]))) \
+        .collect()
     return swaps
+
 
 # Loads input FxFwd specifications from input file into an RDD and then collects the results
 def load_fxfwds(instruments_file):
     fxfwds = sc.textFile(instruments_file) \
         .map(lambda line: line.split(",")) \
         .filter(lambda r: r[0] == 'FXFWD') \
-        .map(lambda line: (str(line[1]), str(line[2]), float(line[3]), float(line[4]), str(line[5]), str(line[6])))\
+        .map(lambda line: (str(line[1]), str(line[2]), float(line[3]), float(line[4]), str(line[5]), str(line[6]))) \
         .collect()
     return fxfwds
+
 
 # Builds a QuantLib swap object from given specification
 def makeSwap(today, start, maturity, nominal, fixedRate, index, typ=ql.VanillaSwap.Payer):
@@ -90,6 +97,7 @@ def makeSwap(today, start, maturity, nominal, fixedRate, index, typ=ql.VanillaSw
                           index.dayCounter())
     return swap, [index.fixingDate(x) for x in floatSchedule if index.fixingDate(x) >= today][:-1]
 
+
 # main method invoked by Spark driver program
 def main(sc, args_dict):
     # Broadcast dictionary object, which will hold various pure python objects
@@ -97,10 +105,12 @@ def main(sc, args_dict):
     # QuantLib SWIG wrappers require use of broadcast variables in Spark
 
     # Set up variables and data
+    session = Session(aws_access_key_id='AWS_ACCESS_KEY',
+                      aws_secret_access_key='AWS_SECRET_ACCESS_KEY')
     broadcast_dict = {}
     pytoday = dt.datetime(2020, 4, 7)
     broadcast_dict['python_today'] = pytoday
-    today = ql.Date(pytoday.day, pytoday.month,pytoday.year)
+    today = ql.Date(pytoday.day, pytoday.month, pytoday.year)
     ql.Settings.instance().evaluationDate = today
 
     usd_calendar = ql.UnitedStates()
@@ -132,8 +142,8 @@ def main(sc, args_dict):
     usd_disc_factors = usd_swap_curve.map(lambda r: r[1]).collect()
     broadcast_dict['usd_curve_dates'] = usd_curve_dates
     broadcast_dict['usd_disc_factors'] = usd_disc_factors
-    usd_crv_today = ql.DiscountCurve([ql.DateParser.parseFormatted(x,'%Y-%m-%d')
-                                      for x in usd_curve_dates] , usd_disc_factors, usd_dc, usd_calendar )
+    usd_crv_today = ql.DiscountCurve([ql.DateParser.parseFormatted(x, '%Y-%m-%d')
+                                      for x in usd_curve_dates], usd_disc_factors, usd_dc, usd_calendar)
     usd_disc_term_structure = ql.RelinkableYieldTermStructureHandle(usd_crv_today)
 
     # Build the QuantLib index object
@@ -154,24 +164,24 @@ def main(sc, args_dict):
     broadcast_dict['fxfwds'] = fxfwds
 
     swaps = [
-                makeSwap(today, ql.DateParser.parseFormatted(swap[0], '%Y-%m-%d'),
-                     ql.Period(swap[1]), swap[2], swap[3], usdlibor3m,
-                     ql.VanillaSwap.Payer if swap[4] == 'Payer' else ql.VanillaSwap.Receiver)
-                for swap in swaps
-            ]
+        makeSwap(today, ql.DateParser.parseFormatted(swap[0], '%Y-%m-%d'),
+                 ql.Period(swap[1]), swap[2], swap[3], usdlibor3m,
+                 ql.VanillaSwap.Payer if swap[4] == 'Payer' else ql.VanillaSwap.Receiver)
+        for swap in swaps
+    ]
 
     longest_swap_maturity = max([s[0].maturityDate() for s in swaps])
     broadcast_dict['longest_swap_maturity'] = ql_to_datetime(longest_swap_maturity)
 
     Nsim = int(args_dict['NSim'])
     NPartitions = int(args_dict['NPartitions'])
-    a = float(args_dict['a']) #0.376739
-    sigma = float(args_dict['sigma']) #0.0209835
+    a = float(args_dict['a'])  # 0.376739
+    sigma = float(args_dict['sigma'])  # 0.0209835
     broadcast_dict['a'] = a
     broadcast_dict['sigma'] = sigma
 
     # Simulate swap NPVs until we reach the longest maturity
-    years_to_sim = math.ceil(ql.Actual360().yearFraction(today,longest_swap_maturity))
+    years_to_sim = math.ceil(ql.Actual360().yearFraction(today, longest_swap_maturity))
     dates = [today + ql.Period(i, ql.Weeks) for i in range(0, 52 * int(years_to_sim))]
 
     # Ad swap reset dates to our universe of dates
@@ -186,21 +196,28 @@ def main(sc, args_dict):
     temp_rdd = sc.parallelize(T)
 
     # coalesce with shrink the partition size to 1 so we have only 1 file to write and parse later
-    temp_rdd.coalesce(1).saveAsTextFile(output_dir +'/time-grid')
+    temp_rdd.coalesce(1).saveAsTextFile(output_dir + '/time-grid')
 
     # The main routine, generate a matrix of normally distributed random numbers and
     # spread them across the cluster
-    randArrayRDD = RandomRDDs.normalVectorRDD(sc, Nsim, len(T), NPartitions, seed=1)
+
+    randArrayRDD = RandomRDDs.normalVectorRDD(sc, Nsim, len(T), seed=1)
 
     # for each row of the matrix, which corresponds to one simulated path,
     # compute netting set NPV (collateralised and uncollateralised)
-    npv_cube = randArrayRDD.map(lambda p: (calc_exposure(p,T,br_dict)))
+
+    npv_list = randArrayRDD.map(lambda p: (calc_exposure(p, T, br_dict))).collect()
+
+    # convert list to native dataframe
+
+    npv_dataframe = sc.parallelize(npv_list)
 
     # write out the npv cube, remove '[' and ']' added by numpy array to ease parsing later
-    npv_cube.coalesce(1).saveAsTextFile(output_dir + '/npv_cube')
+
+    npv_dataframe.coalesce(1).saveAsTextFile(output_dir + '/npv_cube')
+
 
 def calc_exposure(rnumbers, time_grid, br_dict):
-
     # get hold of broadcasted dictionary and rebuild the curves, libor index, swaps and FxFwd
     # we need to do this since QuantLib SWIG objects cannot be passed around
 
@@ -223,7 +240,7 @@ def calc_exposure(rnumbers, time_grid, br_dict):
     usd_curve_dates = broadcast_dict['usd_curve_dates']
     usd_disc_factors = broadcast_dict['usd_disc_factors']
     usd_t0_curve = ql.DiscountCurve([ql.DateParser.parseFormatted(x, '%Y-%m-%d')
-                        for x in usd_curve_dates], usd_disc_factors, usd_dc, usd_calendar)
+                                     for x in usd_curve_dates], usd_disc_factors, usd_dc, usd_calendar)
     usd_t0_curve.enableExtrapolation()
     usd_disc_term_structure = ql.RelinkableYieldTermStructureHandle(usd_t0_curve)
 
@@ -257,8 +274,9 @@ def calc_exposure(rnumbers, time_grid, br_dict):
 
     # define the NPV cube array
     # number of rows = number of dates in time-grid
-    # number of columns = 2 (collateralised and uncollateralised NPV)
-    npvMat = np.zeros((len(time_grid),2), dtype=np.float64)
+    # number of columns = 2 (collateralised and uncollateralised NPV) # add reference
+    # npvMat = np.zeros((len(time_grid),2), dtype=np.float64)
+    npvMat = np.zeros((len(time_grid), 2), dtype=np.float64)
 
     # utility method to calc FxFwd exposure
     def fxfwd_exposure(date, spot, usd_curve):
@@ -277,10 +295,10 @@ def calc_exposure(rnumbers, time_grid, br_dict):
         nettingset_npv += swaps[idx][0].NPV()
     fxfwd_exp = fxfwd_exposure(today, eurusd_fx_spot, usd_t0_curve)
     nettingset_npv += fxfwd_exp
-    npvMat[0,0] = nettingset_npv
+    npvMat[0, 0] = nettingset_npv
 
     # assume 100K collateral has been posted already
-    npvMat[0,1] = nettingset_npv - 100000.0
+    npvMat[0, 1] = nettingset_npv - 100000.0
 
     # Hull White parameter estimations
     def gamma(t):
@@ -297,7 +315,7 @@ def calc_exposure(rnumbers, time_grid, br_dict):
         return np.exp(value) * usd_t0_curve.discount(T) / usd_t0_curve.discount(t)
 
     usd_rmat = np.zeros(shape=(len(time_grid)))
-    usd_rmat[:] = usd_t0_curve.forwardRate(0,0, ql.Continuous, ql.NoFrequency).rate()
+    usd_rmat[:] = usd_t0_curve.forwardRate(0, 0, ql.Continuous, ql.NoFrequency).rate()
 
     eur_rmat = np.zeros(shape=(len(time_grid)))
     eur_rmat[:] = eur_t0_curve.forwardRate(0, 0, ql.Continuous, ql.NoFrequency).rate()
@@ -306,30 +324,36 @@ def calc_exposure(rnumbers, time_grid, br_dict):
     spotmat[:] = eurusd_fx_spot
 
     # CSA terms for Collateral movements
-    IA1 = 0; IA2 = 0; threshold1 = 100000.0; threshold2 = 100000.0; MTA1 = 25000.0; MTA2 = 25000.0;rounding = 5000.0
+    IA1 = 0;
+    IA2 = 0;
+    threshold1 = 100000.0;
+    threshold2 = 100000.0;
+    MTA1 = 25000.0;
+    MTA2 = 25000.0;
+    rounding = 5000.0
     collateral_held = IA2 - IA1
 
     # assume collateral posted last week was 100K, a reasonable number given the exposure was about
     # 280K and 50,000 Threshold
     collateral_posted = 100000.0
 
-
     # the main loop of NPV computations
     for iT in range(1, len(time_grid)):
         mean = usd_rmat[iT - 1] * np.exp(- a * (time_grid[iT] - time_grid[iT - 1])) + \
                gamma(time_grid[iT]) - gamma(time_grid[iT - 1]) * \
-                                        np.exp(- a * (time_grid[iT] - time_grid[iT - 1]))
+               np.exp(- a * (time_grid[iT] - time_grid[iT - 1]))
 
         var = 0.5 * sigma * sigma / a * (1 - np.exp(-2 * a * (time_grid[iT] - time_grid[iT - 1])))
-        rnew = mean + rnumbers[iT-1] * np.sqrt(var)
+        rnew = mean + rnumbers[iT - 1] * np.sqrt(var)
         usd_rmat[iT] = rnew
         # USD discount factors as generated by HW model
         usd_disc_factors = [1.0] + [A(time_grid[iT], time_grid[iT] + k) *
-                                np.exp(- B(time_grid[iT], time_grid[iT] + k) * rnew) for k in range(1, maturity + 1)]
+                                    np.exp(- B(time_grid[iT], time_grid[iT] + k) * rnew) for k in
+                                    range(1, maturity + 1)]
 
         mean = eur_rmat[iT - 1] * np.exp(- a * (time_grid[iT] - time_grid[iT - 1])) + \
                gamma(time_grid[iT]) - gamma(time_grid[iT - 1]) * \
-                                      np.exp(- a * (time_grid[iT] - time_grid[iT - 1]))
+               np.exp(- a * (time_grid[iT] - time_grid[iT - 1]))
 
         var = 0.5 * sigma * sigma / a * (1 - np.exp(-2 * a * (time_grid[iT] - time_grid[iT - 1])))
         rnew = mean + rnumbers[iT - 1] * np.sqrt(var)
@@ -337,7 +361,8 @@ def calc_exposure(rnumbers, time_grid, br_dict):
 
         # EUR discount factors as generated by HW model
         eur_disc_factors = [1.0] + [A(time_grid[iT], time_grid[iT] + k) *
-                                    np.exp(- B(time_grid[iT], time_grid[iT] + k) * rnew) for k in range(1, maturity + 1)]
+                                    np.exp(- B(time_grid[iT], time_grid[iT] + k) * rnew) for k in
+                                    range(1, maturity + 1)]
 
         if dates[iT].serialNumber() > longest_swap_maturity.serialNumber():
             break
@@ -374,7 +399,7 @@ def calc_exposure(rnumbers, time_grid, br_dict):
             nettingset_npv += fxfwd_exp
 
         # Uncollateralised netting set NPV
-        npvMat[iT,0] = nettingset_npv
+        npvMat[iT, 0] = nettingset_npv
 
         collateral_held = collateral_held + collateral_posted
         nettingset_npv = nettingset_npv + IA2 - IA1
@@ -389,27 +414,28 @@ def calc_exposure(rnumbers, time_grid, br_dict):
         elif -collateral_posted < MTA1:
             collateral_posted = 0.
         if collateral_posted != 0 and rounding != 0:
-            collateral_posted = math.ceil(collateral_posted/rounding) * rounding
+            collateral_posted = math.ceil(collateral_posted / rounding) * rounding
         if collateral_posted < 0:
             collateral_held = collateral_held + collateral_posted
             collateral_posted = 0.
         # collateralized netting set NPV
-        npvMat[iT,1] = nettingset_npv - collateral_held
-    return np.array2string(npvMat, formatter={'float_kind':'{0:.6f}'.format})
+        npvMat[iT, 1] = nettingset_npv - collateral_held
+
+    return np.array2string(npvMat, formatter={'float_kind': '{0:.6f}'.format})
 
 
 if __name__ == "__main__":
 
     if len(sys.argv) != 10:
-        print('Usage: ' + sys.argv[0] + ' <num_of_simulations> <num_of_partitions> <hull_white_a> <hull_white_sigma> <usd_swap_curve><eur_swap_curve><libor_fixings><instruments><output_dir>')
+        print('Usage: ' + sys.argv[
+            0] + ' <num_of_simulations> <num_of_partitions> <hull_white_a> <hull_white_sigma> <usd_swap_curve><eur_swap_curve><libor_fixings><instruments><output_dir>')
         sys.exit(1)
 
     conf = SparkConf().setAppName("PFE-POC")
-    sc  = SparkContext(conf=conf)
+    sc = SparkContext(conf=conf)
     sc.setLogLevel('INFO')
 
-
-    args = {'NSim':sys.argv[1], 'NPartitions': sys.argv[2], 'a': sys.argv[3], 'sigma':sys.argv[4],
+    args = {'NSim': sys.argv[1], 'NPartitions': sys.argv[2], 'a': sys.argv[3], 'sigma': sys.argv[4],
             'usd_swap_curve_file': sys.argv[5], 'eur_swap_curve_file': sys.argv[6], 'libor_fixings_file': sys.argv[7],
             'instruments_file': sys.argv[8], 'output_dir': sys.argv[9]}
 
