@@ -307,9 +307,13 @@ def makeSwap(today, start, maturity, nominal, fixedRate, index, typ=ql.VanillaSw
     npv_list = randArrayRDD.map(lambda p: (calc_exposure(p, T, br_dict))).collect()
     
     npv_dataframe = sc.parallelize(npv_list)
-    
-    # write out the npv cube, remove '[' and ']' added by numpy array to ease parsing later
-    
+  
+  </pre></code>
+  
+#### write out the npv cube
+  
+  <pre><code>
+ 
     npv_dataframe.coalesce(1).saveAsTextFile(output_dir + '/npv_cube')
     
 </pre></code>
