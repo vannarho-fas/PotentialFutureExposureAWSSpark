@@ -1,4 +1,4 @@
-# Potential Future Exposure estimation using AWS Elastic Map Reduce & Spark
+# Potential Future Exposure estimation using QuantLib, AWS Elastic Map Reduce & Spark
 
 *A proof of concept ("POC") for estimating potential future exposure ("PFE") with QuantLib and AWS Elastic Map Reduce ("EMR").*
 
