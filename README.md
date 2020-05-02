@@ -145,7 +145,7 @@ The inputs needed for this POC are:
 * Future LIBOR swap curves for USD and EUR (in this case out to 2070)
 * The list of instruments
 
-If you are adjusting the files here or developing your own, you will need to formats dates as YYYY-MM-DD otherwise QuantLib won`t be able to parse the data. 
+If you are adjusting the files here or developing your own, format dates as YYYY-MM-DD to avoid further reformatting / parsing. 
 
 ## The key aspects of the PFE script for running the simulations
 
