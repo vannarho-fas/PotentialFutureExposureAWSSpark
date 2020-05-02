@@ -99,7 +99,7 @@ A firm can often “net” the exposures of different instruments from the same 
 
 Go to instance page and "connect" to the instance via ssh (using your downloaded key pair)
 
-## Installing Boost, QuantLib and other packages - Creating the Amazon Mahcine Image ("AMI")
+## Installing Boost, QuantLib and other packages - Creating the Amazon Machine Image ("AMI")
 
 Once you're connect to the instance, you'll install the base software required. 
 
