@@ -300,23 +300,6 @@ def makeSwap(today, start, maturity, nominal, fixedRate, index, typ=ql.VanillaSw
 
 </pre></code>
 
-#### Define the NPV cube array
-
-<pre><code>
-
-    npv_list = randArrayRDD.map(lambda p: (calc_exposure(p, T, br_dict))).collect()
-    
-    npv_dataframe = sc.parallelize(npv_list)
-  
-  </pre></code>
-  
-#### write out the npv cube
-  
-  <pre><code>
- 
-    npv_dataframe.coalesce(1).saveAsTextFile(output_dir + '/npv_cube')
-    
-</pre></code>
     
 #### Hull White parameter estimations to generate USD & EUR discount factors
 
@@ -346,8 +329,8 @@ def makeSwap(today, start, maturity, nominal, fixedRate, index, typ=ql.VanillaSw
     
 </pre></code>
 
-#### Loop through dates and define NPVs (including  Garman-Kohlagen process to build FX rate simulation for FxFwd)
 
+#### Loop through dates and define NPVs (including Garman-Kohlagen process to build FX rate simulation for FxFwd)
 
 <pre><code>
 
@@ -434,9 +417,28 @@ def makeSwap(today, start, maturity, nominal, fixedRate, index, typ=ql.VanillaSw
 
 </pre></code>
 
+#### Define the NPV cube array
+
+<pre><code>
+
+    npv_list = randArrayRDD.map(lambda p: (calc_exposure(p, T, br_dict))).collect()
+    
+    npv_dataframe = sc.parallelize(npv_list)
+  
+  </pre></code>
+  
+#### write out the npv cube
+  
+  <pre><code>
+ 
+    npv_dataframe.coalesce(1).saveAsTextFile(output_dir + '/npv_cube')
+    
+</pre></code>
+
+
 ## Submitting the spark job
 
-Copy the files in this repo to your s3 bucket and amend the 1304spark-submit.sh file to point to your s3 bucket. Run the file. It will take somewhere from about 1-5 minutes for the Spark job to complete, depending on the hardware spec. It computes a netting set NPV for 5000 simulations across future 454 dates for 2 swaps and 1 FxFwd.  
+Copy the files in this repo to your s3 bucket and amend the 1504_SPARK_SUBMIT.sh file to point to your s3 bucket and tweak any settings (e.g. #simulations, memory sizes, core, # executors). Run the file. It will take somewhere from about 1-5 minutes for the Spark job to complete, depending on the hardware spec. It computes a netting set NPV for 5000 simulations across 454 future dates for 2 swaps and 1 FxFwd.  
 
 After the spark job completes, it will create an "output" folder in your s3 bucket. The output files  are time-grid array and NPV cube. 
 
@@ -452,7 +454,6 @@ export HADOOP_CONF_DIR=$HADOOP_HOME/etc/hadoop
 export YARN_CONF_DIR=$HADOOP_HOME/etc/hadoop
 export LD_LIBRARY_PATH=/usr/lib/hadoop/lib/native
 export SPARK_HOME=/usr/lib/spark
-
 
 
 # submit Spark job - adjust s3 bucket, filenames and scenario variables as needed
