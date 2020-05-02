@@ -105,7 +105,7 @@ Once you're connect to the instance, you'll install the base software required.
 
 ssh into the box using your local PEM file and the specific machine address. e.g. `ssh -i /Users/XX/XX.pem ec2-user@ec2-XX-XX-XXX-XXX.ap-southeast-2.compute.amazonaws.com`. 
 
-Run the 1504_PFE_INSTALL_PACKAGES.sh script either by downloading it (e.g. `wget https://raw.githubusercontent.com/fordesmith/PotentialFutureExposureAWSSpark/master/1304instpack_pip.sh`) and running it (e.g. sudo bash ./1504_PFE_INSTALL_PACKAGES.sh) or by copying the contents of the file / commands directly into your terminal window. Please forgive the liberal use of sudo; this is only a POC, after all :wink:. 
+Run the 1504_PFE_INSTALL_PACKAGES.sh script either by downloading it (e.g. `wget https://raw.githubusercontent.com/fordesmith/PotentialFutureExposureAWSSpark/master/1304instpack_pip.sh`) and running it (e.g. sudo bash ./1504_PFE_INSTALL_PACKAGES.sh).
 
 The AMI provides the base packages required for the cluster instance. 
 
@@ -113,7 +113,7 @@ Once complete, choose "Image > Create Image" to save an AMI to use for your clus
 
 ## Setting up the cluster
 
-Go to EMR and "Create Cluster". Go to "Advanced Options". In "software configuration" choose release 6.0.0 plus check "Hadoop", "Hive", "Hue", "Zepplin" and "Spark". Choose "next". In "Hardware" choose 4 x core nodes. Choose servers with at least 16GB memory. 
+Go to EMR and "Create Cluster". Go to "Advanced Options". In "software configuration" choose release 6.0.0 plus check "Hadoop", "Hive", "Hue", "Zepplin" and "Spark". Choose "next". In "Hardware" choose 4 x core nodes. Choose servers with at least 16GB memory. The disk size needs to be as big or bigger than the AMI image (e.g. >=8G).
 
 For my test I used the following config: 
 ** Executors: tried both 4 and 14 servers
@@ -130,9 +130,9 @@ Leave other settings as is. Choose "next". In "Additional Options" choose the AM
 
 A spark cluster has n nodes managed by a central master. This allows it offer large scale parallel processing. 
 
-For the example below, the job completes in 1 minute with 14 workers and 1.8 minutes with 4 workers. Note I haven`t optimised the job, so you may be able to make it run faster. 
-
 ![Spark Cluster Diagram](https://raw.githubusercontent.com/fordesmith/PotentialFutureExposureAWSSpark/master/visualisations/cluster-overview.png).
+
+For the example here, the job completes in ~1 minute with 14 workers and ~2 minutes with 4 workers. In the first few runs the core NPV was only running on one node and the job tool 30 minutes with 4 or 30 worker nodes; I tweaked the code to ensure it spread work across the cluster, but apart from that, I haven`t optimised the job, so you may be able to make it run faster. 
 
 ## Creating the input files
 
