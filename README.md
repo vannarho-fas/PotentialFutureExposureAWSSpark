@@ -41,7 +41,7 @@ _More high level context here: https://www.edupristine.com/blog/otc-derivatives.
 
 ### QuantLib
 
-QuantLib is a comprehensive open source software framework for quantitative finance. QuantLib is written in C++ and exposed via different languages (python used here) and offers tools that are useful both for practical implementation and for advanced modeling, with features such as market conventions, yield curve models, solvers, PDEs, Monte Carlo (low-discrepancy included), exotic options, VAR, and so on.
+QuantLib is a comprehensive open source software framework for quantitative finance. QuantLib is written in C++ and exposed via different languages (python used here). It offers tools that are useful both for practical implementation and for advanced modeling, with features such as market conventions, yield curve models, solvers, PDEs, Monte Carlo (low-discrepancy included), exotic options, VAR, and so on.
 
 ### Amazon EMR & PFE
 
