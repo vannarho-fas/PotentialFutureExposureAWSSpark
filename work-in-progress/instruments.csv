@@ -1,0 +1,6 @@
+,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16
+IRS,6/7/19,5Y,1000000,0.0186,Receiver,USD,USD,,,,,,,,,,
+IRS,3/2/18,10Y,2000000,0.0236,Payer,USD,USD,,,,,,,,,,
+FXFWD,28/9/19,1Y,430000,1.081566,USD,EUR,,,,,,,,,,,
+type,settlement,exercise1,volume,spot,riskfree,dividend,volatility,x0,x1,beta,eta,jumpIntensity,speed,volatility,sizet,sizex,sizey
+SWING,01-05-2020,01-01-2021,2000000,1.9,0.1,0,0.2,0.08,0.08,6,5,2.5,1,0.2,25,25,60

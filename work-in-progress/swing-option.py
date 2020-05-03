@@ -14,16 +14,74 @@
 
 import QuantLib as ql
 import math
+from pyspark import SparkConf, SparkContext
+import datetime as dt
 
-todaysDate = ql.Date(1, ql.May, 2020)
+# Used in loading the various input text files
+def is_number(s):
+    try:
+        float(s)
+        return True
+    except ValueError:
+        return False
+
+# QuantLib date to Python date
+def ql_to_datetime(d):
+    return dt.datetime(d.year(), d.month(), d.dayOfMonth())
+
+# Python date to QuantLib date
+def py_to_qldate(d):
+    return ql.Date(d.day, d.month, d.year)
+
+# string to Python date to QuantLib date
+def str_to_qldate(strd):
+    d = dt.datetime.strptime(strd, '%d-%m-%Y')
+    return ql.Date(d.day, d.month, d.year)
+
+# Loads NYMEX fixings from input file into an RDD and then collects the results
+def loadNymexFixings(nymex_fixings_file):
+    nymex_fixings = sc.textFile(nymex_fixings_file) \
+        .map(lambda line: line.split(",")) \
+        .filter(lambda r: is_number(r[1])) \
+        .map(lambda line: (str(line[0]), float(line[1]))).cache()
+
+    fixingDates = nymex_fixings.map(lambda r: r[0]).collect()
+    fixings = nymex_fixings.map(lambda r: r[1]).collect()
+    return fixingDates, fixings
+
+# Loads input swap specifications from input file into an RDD and then collects the results
+def loadSwingOptions(instruments_file):
+    swingOpt = sc.textFile(instruments_file) \
+        .map(lambda line: line.split(",")) \
+        .filter(lambda r: r[0] == 'SWING') \
+        .map(lambda line: (str(line[1]), str(line[2]), float(line[3]), float(line[4]), float(line[5]), float(line[6]), float(line[7]), float(line[8]), float(line[9]), float(line[10]), float(line[11]), float(line[12]), float(line[13]), float(line[14]), int(line[15]), int(line[16]), int(line[17]))).cache() \
+        .collect()
+    return swingOpt
+
+conf = SparkConf().setAppName("swing-poc")
+sc = SparkContext(conf=conf)
+sc.setLogLevel('INFO')
+
+nymexFixingDates, nymexFixings = loadNymexFixings('/Users/forsmith/Documents/PotentialFutureExposureAWSSpark/work-in-progress/nymexhh-gas-forward-curve.csv')
+nymexFixingDates = [ql.DateParser.parseFormatted(r, '%Y-%m-%d') for r in nymexFixingDates]
+
+# pytoday = dt.datetime(2020, 4, 7)
+swingO = loadSwingOptions('/Users/forsmith/Documents/PotentialFutureExposureAWSSpark/work-in-progress/instruments.csv')
+
+# todaysDate = ql.Date(1, ql.May, 2020)
+todaysDate = str_to_qldate(swingO[0][0])
 ql.Settings.instance().evaluationDate = todaysDate
 settlementDate = todaysDate
-riskFreeRate = ql.FlatForward(settlementDate, 0.1, ql.Actual365Fixed())
-dividendYield = ql.FlatForward(settlementDate, 0.0, ql.Actual365Fixed())
-underlying = ql.SimpleQuote(1.9) #nymex spot price
-volatility = ql.BlackConstantVol(todaysDate, ql.TARGET(), 0.20, ql.Actual365Fixed())
+exDate = str_to_qldate(swingO[0][1])
+rFR = swingO[0][4]
+riskFreeRate = ql.FlatForward(settlementDate, rFR, ql.Actual365Fixed())
+dYLD =  swingO[0][5]
+dividendYield = ql.FlatForward(settlementDate,dYLD, ql.Actual365Fixed())
+underlying = ql.SimpleQuote(swingO[0][4]) #nymex spot price
+vOL = swingO[0][6]
+volatility = ql.BlackConstantVol(todaysDate, ql.TARGET(), vOL, ql.Actual365Fixed())
 
-exerciseDates = [ql.Date(1, ql.January, 2021) + i for i in range(60)]
+exerciseDates = [exDate + i for i in range(60)]
 
 swingOption = ql.VanillaSwingOption(
     ql.VanillaForwardPayoff(ql.Option.Call, underlying.value()), ql.SwingExercise(exerciseDates), 0, len(exerciseDates)
@@ -40,14 +98,18 @@ swingOption.setPricingEngine(ql.FdSimpleBSSwingEngine(bsProcess))
 
 print("Black Scholes Price: %f" % swingOption.NPV())
 
-x0 = 0.08
-x1 =0.08
+# Kluge Model Price
 
-beta = 6.0 #market risk
-eta = 5.0 #theta
-jumpIntensity = 2.5
-speed = 1.0 #kappa
-volatility = 0.2 #sigma
+x0 = swingO[0][7] #0.08
+x1 = swingO[0][8] #0.08
+beta = swingO[0][9] #market risk 6
+eta = swingO[0][10] #theta 5
+jumpIntensity = swingO[0][11] #2.5
+speed = swingO[0][12] #kappa 1
+volatility = swingO[0][13] #sigma 0.2
+gridT = swingO[0][14]
+gridX = swingO[0][15]
+gridY = swingO[0][16]
 
 curveShape = []
 for d in exerciseDates:
@@ -62,6 +124,6 @@ for d in exerciseDates:
 ouProcess = ql.ExtendedOrnsteinUhlenbeckProcess(speed, volatility, x0, lambda x: x0)
 jProcess = ql.ExtOUWithJumpsProcess(ouProcess, x1, beta, jumpIntensity, eta)
 
-swingOption.setPricingEngine(ql.FdSimpleExtOUJumpSwingEngine(jProcess, riskFreeRate, 25, 25, 60, curveShape))
+swingOption.setPricingEngine(ql.FdSimpleExtOUJumpSwingEngine(jProcess, riskFreeRate, gridT, gridX, gridY, curveShape))
 
 print("Kluge Model Price  : %f" % swingOption.NPV())
