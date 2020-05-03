@@ -1,4 +1,4 @@
-# Potential Future Exposure estimation using AWS Elastic Map Reduce & Spark
+# Potential Future Exposure estimation using QuantLib, AWS Elastic Map Reduce & Spark
 
 *A proof of concept ("POC") for estimating potential future exposure ("PFE") with QuantLib and AWS Elastic Map Reduce ("EMR").*
 
@@ -7,7 +7,7 @@ This will cover:
 * The steps needed to build and run the infrastructure and software and then analyse the data outputs
 * The proposed next steps to further extend this POC further
 
-## Context
+## Context (you can skip this bit if you work in capital markets :wink: )
 
 The first decade of the 21st Century was  disastrous for financial institutions, derivatives and risk management. Counterparty credit risk has become the key element of financial risk management, highlighted by the bankruptcy of the investment bank Lehman Brothers and failure of other high profile institutions such as Bear Sterns, AIG, Fannie Mae and Freddie Mac. The sudden realisation of extensive counterparty risks, primarily from over-the-counter ("OTC") products, severely compromised the health of global financial markets. Estimating potential future exposure is now a key task for all financial institutions.
 
@@ -39,6 +39,10 @@ Some of the ways to reduce counterparty risk:
 
 _More high level context here: https://www.edupristine.com/blog/otc-derivatives._
 
+### QuantLib
+
+QuantLib is a comprehensive open source software framework for quantitative finance. QuantLib is written in C++ and exposed via different languages (python used here). It offers tools that are useful both for practical implementation and for advanced modeling, with features such as market conventions, yield curve models, solvers, PDEs, Monte Carlo (low-discrepancy included), exotic options, VAR, and so on.
+
 ### Amazon EMR & PFE
 
 EMR provides a managed Hadoop framework that makes it easy, fast, and cost-effective to process vast amounts of data across dynamically scalable Amazon EC2 instances, like the data analysis required to estimate FPE. You can also run other popular distributed frameworks such as Apache Spark, Zepplin, Hive and interact with data in other AWS data stores such as Amazon S3 and Amazon DynamoDB.
@@ -49,10 +53,14 @@ That’s not to say it is always easy to set up, though. :sweat:
 
 The field of quantitative finance upon which this POC rests is vast and quickly becomes exceedingly complex! A key theoretical references is: https://www.amazon.com/Counterparty-Credit-Risk-challenge-financial/dp/047068576X
 
-This work would not have been possible without the specific Python design and examples from:
+This work would not have been possible without the specific help, Python design and examples from:
+* https://www.implementingquantlib.com/ - thanks to Luigi for being the "father" of Quantlib and for replying to my questions
+* https://quantlib-python-docs.readthedocs.io/en/latest/
 * http://gouthamanbalaraman.com/blog/hull-white-simulation-quantlib-python.html
-* http://suhasghorp.com/estimating-potential-future-exposure-with-quantlib-and-aws-emr-part-i/
+* http://suhasghorp.com/estimating-potential-future-exposure
 * https://ipythonquant.wordpress.com/2015/04/08/expected-exposure-and-pfe-simulation-with-quantlib-and-python/
+
+...and all the people who helped on Stack Overflow or otherwise. 
 
 
 ## Methods used
@@ -95,13 +103,13 @@ A firm can often “net” the exposures of different instruments from the same 
 
 Go to instance page and "connect" to the instance via ssh (using your downloaded key pair)
 
-## Installing Boost, QuantLib and other packages - Creating the Amazon Mahcine Image ("AMI")
+## Installing Boost, QuantLib and other packages - Creating the Amazon Machine Image ("AMI")
 
 Once you're connect to the instance, you'll install the base software required. 
 
 ssh into the box using your local PEM file and the specific machine address. e.g. `ssh -i /Users/XX/XX.pem ec2-user@ec2-XX-XX-XXX-XXX.ap-southeast-2.compute.amazonaws.com`. 
 
-Run the 1504_PFE_INSTALL_PACKAGES.sh script either by downloading it (e.g. `wget https://raw.githubusercontent.com/fordesmith/PotentialFutureExposureAWSSpark/master/1304instpack_pip.sh`) and running it (e.g. sudo bash ./1504_PFE_INSTALL_PACKAGES.sh) or by copying the contents of the file / commands directly into your terminal window. Please forgive the liberal use of sudo; this is only a POC, after all :wink:. 
+Run the 1504_PFE_INSTALL_PACKAGES.sh script either by downloading it (e.g. `wget https://raw.githubusercontent.com/fordesmith/PotentialFutureExposureAWSSpark/master/1304instpack_pip.sh`) and running it (e.g. sudo bash ./1504_PFE_INSTALL_PACKAGES.sh).
 
 The AMI provides the base packages required for the cluster instance. 
 
@@ -109,7 +117,7 @@ Once complete, choose "Image > Create Image" to save an AMI to use for your clus
 
 ## Setting up the cluster
 
-Go to EMR and "Create Cluster". Go to "Advanced Options". In "software configuration" choose release 6.0.0 plus check "Hadoop", "Hive", "Hue", "Zepplin" and "Spark". Choose "next". In "Hardware" choose 4 x core nodes. Choose servers with at least 16GB memory. 
+Go to EMR and "Create Cluster". Go to "Advanced Options". In "software configuration" choose release 6.0.0 plus check "Hadoop", "Hive", "Hue", "Zepplin" and "Spark". Choose "next". In "Hardware" choose 4 x core nodes. Choose servers with at least 16GB memory. The disk size needs to be as big or bigger than the AMI image (e.g. >=8G).
 
 For my test I used the following config: 
 ** Executors: tried both 4 and 14 servers
@@ -126,9 +134,9 @@ Leave other settings as is. Choose "next". In "Additional Options" choose the AM
 
 A spark cluster has n nodes managed by a central master. This allows it offer large scale parallel processing. 
 
-For the example below, the job completes in 1 minute with 14 workers and 1.8 minutes with 4 workers. Note I haven`t optimised the job, so you may be able to make it run faster. 
-
 ![Spark Cluster Diagram](https://raw.githubusercontent.com/fordesmith/PotentialFutureExposureAWSSpark/master/visualisations/cluster-overview.png).
+
+For the example here, the job completes in ~1 minute with 14 workers and ~2 minutes with 4 workers. In the first few runs the core NPV was only running on one node and the job took 30 minutes and as a result didn`t speed up when adding up to 30 worker nodes. I tweaked the python code to ensure it spread work across the cluster, but apart from that, I haven`t optimised the job, so you may be able to make it run faster. 
 
 ## Creating the input files
 
@@ -137,7 +145,7 @@ The inputs needed for this POC are:
 * Future LIBOR swap curves for USD and EUR (in this case out to 2070)
 * The list of instruments
 
-If you are adjusting the files here or developing your own, you will need to formats dates as YYYY-MM-DD otherwise QuantLib won`t be able to parse the data. 
+If you are adjusting the files here or developing your own, format dates as YYYY-MM-DD to avoid further reformatting / parsing. 
 
 ## The key aspects of the PFE script for running the simulations
 
@@ -296,19 +304,6 @@ def makeSwap(today, start, maturity, nominal, fixedRate, index, typ=ql.VanillaSw
 
 </pre></code>
 
-#### Define the NPV cube array
-
-<pre><code>
-
-    npv_list = randArrayRDD.map(lambda p: (calc_exposure(p, T, br_dict))).collect()
-    
-    npv_dataframe = sc.parallelize(npv_list)
-    
-    # write out the npv cube, remove '[' and ']' added by numpy array to ease parsing later
-    
-    npv_dataframe.coalesce(1).saveAsTextFile(output_dir + '/npv_cube')
-    
-</pre></code>
     
 #### Hull White parameter estimations to generate USD & EUR discount factors
 
@@ -338,8 +333,8 @@ def makeSwap(today, start, maturity, nominal, fixedRate, index, typ=ql.VanillaSw
     
 </pre></code>
 
-#### Loop through dates and define NPVs (including  Garman-Kohlagen process to build FX rate simulation for FxFwd)
 
+#### Loop through dates and define NPVs (including Garman-Kohlagen process to build FX rate simulation for FxFwd)
 
 <pre><code>
 
@@ -426,9 +421,28 @@ def makeSwap(today, start, maturity, nominal, fixedRate, index, typ=ql.VanillaSw
 
 </pre></code>
 
+#### Define the NPV cube array
+
+<pre><code>
+
+    npv_list = randArrayRDD.map(lambda p: (calc_exposure(p, T, br_dict))).collect()
+    
+    npv_dataframe = sc.parallelize(npv_list)
+  
+  </pre></code>
+  
+#### write out the npv cube
+  
+  <pre><code>
+ 
+    npv_dataframe.coalesce(1).saveAsTextFile(output_dir + '/npv_cube')
+    
+</pre></code>
+
+
 ## Submitting the spark job
 
-Copy the files in this repo to your s3 bucket and amend the 1304spark-submit.sh file to point to your s3 bucket. Run the file. It will take somewhere from about 1-5 minutes for the Spark job to complete, depending on the hardware spec. It computes a netting set NPV for 5000 simulations across future 454 dates for 2 swaps and 1 FxFwd.  
+Copy the files in this repo to your s3 bucket and amend the 1504_SPARK_SUBMIT.sh file to point to your s3 bucket and tweak any settings (e.g. #simulations, memory sizes, core, # executors). Run the file. It will take somewhere from about 1-5 minutes for the Spark job to complete, depending on the hardware spec. It computes a netting set NPV for 5000 simulations across 454 future dates for 2 swaps and 1 FxFwd.  
 
 After the spark job completes, it will create an "output" folder in your s3 bucket. The output files  are time-grid array and NPV cube. 
 
@@ -444,7 +458,6 @@ export HADOOP_CONF_DIR=$HADOOP_HOME/etc/hadoop
 export YARN_CONF_DIR=$HADOOP_HOME/etc/hadoop
 export LD_LIBRARY_PATH=/usr/lib/hadoop/lib/native
 export SPARK_HOME=/usr/lib/spark
-
 
 
 # submit Spark job - adjust s3 bucket, filenames and scenario variables as needed
