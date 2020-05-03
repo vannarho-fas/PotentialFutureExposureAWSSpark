@@ -39,18 +39,18 @@ def str_to_qldate(strd):
     return ql.Date(d.day, d.month, d.year)
 
 # Loads NYMEX fixings from input file into an RDD and then collects the results
-def loadNymexFixings(nymex_fixings_file):
-    nymex_fixings = sc.textFile(nymex_fixings_file) \
+def load_nymex_curve(nymex_curve_file):
+    nymex_curve = sc.textFile(nymex_curve_file) \
         .map(lambda line: line.split(",")) \
         .filter(lambda r: is_number(r[1])) \
         .map(lambda line: (str(line[0]), float(line[1]))).cache()
 
-    fixingDates = nymex_fixings.map(lambda r: r[0]).collect()
-    fixings = nymex_fixings.map(lambda r: r[1]).collect()
-    return fixingDates, fixings
+    dates = nymex_curve.map(lambda r: r[0]).collect()
+    rates = nymex_curve.map(lambda r: r[1]).collect()
+    return dates, rates
 
 # Loads input swap specifications from input file into an RDD and then collects the results
-def loadSwingOptions(instruments_file):
+def load_swing_options(instruments_file):
     swingO = sc.textFile(instruments_file) \
         .map(lambda line: line.split(",")) \
         .filter(lambda r: r[0] == 'SWING') \
@@ -62,24 +62,22 @@ conf = SparkConf().setAppName("swing-poc")
 sc = SparkContext(conf=conf)
 sc.setLogLevel('INFO')
 
-nymexFixingDates, nymexFixings = loadNymexFixings('/Users/forsmith/Documents/PotentialFutureExposureAWSSpark/work-in-progress/nymexhh-gas-forward-curve.csv')
-nymexFixingDates = [ql.DateParser.parseFormatted(r, '%Y-%m-%d') for r in nymexFixingDates]
+nymexCurveDates, nymexRates = load_nymex_curve('/Users/forsmith/Documents/PotentialFutureExposureAWSSpark/work-in-progress/nymexhh-gas-forward-curve.csv')
+nymexCurveDates = [ql.DateParser.parseFormatted(r, '%Y-%m-%d') for r in nymexCurveDates]
+swingOpts = load_swing_options('/Users/forsmith/Documents/PotentialFutureExposureAWSSpark/work-in-progress/instruments.csv')
 
-# pytoday = dt.datetime(2020, 4, 7)
-swingO = loadSwingOptions('/Users/forsmith/Documents/PotentialFutureExposureAWSSpark/work-in-progress/instruments.csv')
-
-for s in range(len(swingO)):
-    todaysDate = str_to_qldate(swingO[s][0])
+for s in range(len(swingOpts)):
+    todaysDate = str_to_qldate(swingOpts[s][0])
     ql.Settings.instance().evaluationDate = todaysDate
     settlementDate = todaysDate
-    exDate = str_to_qldate(swingO[s][1])
-    volumeGas = swingO[s][2]
-    rFR = swingO[s][4]
+    exDate = str_to_qldate(swingOpts[s][1])
+    volumeGas = swingOpts[s][2]
+    rFR = swingOpts[s][4]
     riskFreeRate = ql.FlatForward(settlementDate, rFR, ql.Actual365Fixed())
-    dYLD =  swingO[s][5]
+    dYLD =  swingOpts[s][5]
     dividendYield = ql.FlatForward(settlementDate,dYLD, ql.Actual365Fixed())
-    underlying = ql.SimpleQuote(swingO[s][4]) #nymex spot price
-    vOL = swingO[s][6]
+    underlying = ql.SimpleQuote(swingOpts[s][4]) #nymex spot price
+    vOL = swingOpts[s][6]
     volatility = ql.BlackConstantVol(todaysDate, ql.TARGET(), vOL, ql.Actual365Fixed())
 
     exerciseDates = [exDate + i for i in range(60)]
@@ -101,16 +99,16 @@ for s in range(len(swingO)):
 
 # Kluge Model Price
 
-    x0 = swingO[s][7] #0.08
-    x1 = swingO[s][8] #0.08
-    beta = swingO[s][9] #market risk 6
-    eta = swingO[s][10] #theta 5
-    jumpIntensity = swingO[s][11] #2.5
-    speed = swingO[s][12] #kappa 1
-    volatility = swingO[s][13] #sigma 0.2
-    gridT = swingO[s][14]
-    gridX = swingO[s][15]
-    gridY = swingO[s][16]
+    x0 = swingOpts[s][7] #0.08
+    x1 = swingOpts[s][8] #0.08
+    beta = swingOpts[s][9] #market risk 6
+    eta = swingOpts[s][10] #theta 5
+    jumpIntensity = swingOpts[s][11] #2.5
+    speed = swingOpts[s][12] #kappa 1
+    volatility = swingOpts[s][13] #sigma 0.2
+    gridT = swingOpts[s][14]
+    gridX = swingOpts[s][15]
+    gridY = swingOpts[s][16]
 
     curveShape = []
     for d in exerciseDates:
