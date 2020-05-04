@@ -1,16 +1,10 @@
-# What Is a Swing Option?
 # A swing option is a type of contract used by investors in energy markets that lets
 # the option holder buy a predetermined quantity of energy at a predetermined price while
 # retaining a certain degree of flexibility in the amount purchased and the price paid.
 # A swing option contract delineates the least and most energy an option holder can buy
-# (or "take") per day and per month, how much that energy will cost (known as its strike price),
+# (or "take") per day and per month, how much that energy will cost,
 # and how many times during the month the option holder can change or "swing" the daily quantity
 # of energy purchased.
-# How Swing Options Work
-# Swing options (also known as “swing contracts,” “take-and-pay options” or
-# “variable base-load factor contracts”) are most commonly used for the purchase of oil,
-# natural gas, and electricity. They may be used as hedging instruments by the option holder,
-# to protect against price changes in these commodities.
 
 import QuantLib as ql
 import math
@@ -85,9 +79,9 @@ sc = SparkContext(conf=conf)
 sc.setLogLevel('INFO')
 
 #Load dates, options
-nymexCurveDates, nymexRates = load_nymex_curve('/Users/forsmith/Documents/PotentialFutureExposureAWSSpark/work-in-progress/nymexhh-gas-forward-curve.csv')
-nymexCurveDates = [ql.DateParser.parseFormatted(r, '%Y-%m-%d') for r in nymexCurveDates]
-swingOpts = load_swing_options('/Users/forsmith/Documents/PotentialFutureExposureAWSSpark/work-in-progress/instruments.csv')
+nymex_curve_dates, nymex_rates = load_nymex_curve('/Users/forsmith/Documents/PotentialFutureExposureAWSSpark/work-in-progress/nymexhh-gas-forward-curve.csv')
+nymex_curve_dates = [ql.DateParser.parseFormatted(r, '%Y-%m-%d') for r in nymex_curve_dates]
+swing_options = load_swing_options('/Users/forsmith/Documents/PotentialFutureExposureAWSSpark/work-in-progress/instruments.csv')
 
 #set up printing
 headers = [" Black Scholes ", " Kluge Model "]
@@ -101,65 +95,65 @@ dblrule = "=" * width
 tab = " " * 2
 
 # main loop through swing options in instruments for BS and KM pricing models
-for s in range(len(swingOpts)):
+for s in range(len(swing_options)):
 # Black Scholes price
-    todaysDate = str_to_qldate(swingOpts[s][0])
-    ql.Settings.instance().evaluationDate = todaysDate
-    settlementDate = todaysDate
-    exDate = str_to_qldate(swingOpts[s][1])
-    volumeGas = swingOpts[s][2]
-    rFR = swingOpts[s][4]
-    riskFreeRate = ql.FlatForward(settlementDate, rFR, ql.Actual365Fixed())
-    dYLD =  swingOpts[s][5]
-    dividendYield = ql.FlatForward(settlementDate,dYLD, ql.Actual365Fixed())
-    underlying = ql.SimpleQuote(swingOpts[s][4]) #nymex spot price
-    vOL = swingOpts[s][6]
-    volatility = ql.BlackConstantVol(todaysDate, ql.TARGET(), vOL, ql.Actual365Fixed())
+    todays_date = str_to_qldate(swing_options[s][0])
+    ql.Settings.instance().evaluationDate = todays_date
+    settlement_date = todays_date
+    ex_date = str_to_qldate(swing_options[s][1])
+    volume_gas = swing_options[s][2]
+    r_fr = swing_options[s][4]
+    risk_free_rate = ql.FlatForward(settlement_date, r_fr, ql.Actual365Fixed())
+    div_yield =  swing_options[s][5]
+    dividend_yield = ql.FlatForward(settlement_date,div_yield, ql.Actual365Fixed())
+    underlying = ql.SimpleQuote(swing_options[s][4]) #nymex spot price
+    vol_bs = swing_options[s][6]
+    volatility_bs = ql.BlackConstantVol(todays_date, ql.TARGET(), vol_bs, ql.Actual365Fixed())
 
-    exerciseDates = [exDate + i for i in range(60)]
+    exercise_dates = [ex_date + i for i in range(60)]
 
-    swingOption = ql.VanillaSwingOption(
-        ql.VanillaForwardPayoff(ql.Option.Call, underlying.value()), ql.SwingExercise(exerciseDates), 0, len(exerciseDates)
+    swing_option_object = ql.VanillaSwingOption(
+        ql.VanillaForwardPayoff(ql.Option.Call, underlying.value()), ql.SwingExercise(exercise_dates), 0, len(exercise_dates)
     )
 
     bsProcess = ql.BlackScholesMertonProcess(
       ql.QuoteHandle(underlying),
-     ql.YieldTermStructureHandle(dividendYield),
-     ql.YieldTermStructureHandle(riskFreeRate),
-        ql.BlackVolTermStructureHandle(volatility),
+     ql.YieldTermStructureHandle(dividend_yield),
+     ql.YieldTermStructureHandle(risk_free_rate),
+        ql.BlackVolTermStructureHandle(volatility_bs),
     )
 
-    swingOption.setPricingEngine(ql.FdSimpleBSSwingEngine(bsProcess))
-    bs_price = swingOption.NPV()
+    swing_option_object.setPricingEngine(ql.FdSimpleBSSwingEngine(bsProcess))
+    bs_price = swing_option_object.NPV()
 
 # Kluge Model Price
-    x0 = swingOpts[s][7] #0.08
-    x1 = swingOpts[s][8] #0.08
-    beta = swingOpts[s][9] #market risk 6
-    eta = swingOpts[s][10] #theta 5
-    jumpIntensity = swingOpts[s][11] #2.5
-    speed = swingOpts[s][12] #kappa 1
-    volatility = swingOpts[s][13] #sigma 0.2
-    gridT = swingOpts[s][14]
-    gridX = swingOpts[s][15]
-    gridY = swingOpts[s][16]
+    x0 = swing_options[s][7] #0.08
+    x1 = swing_options[s][8] #0.08
+    beta = swing_options[s][9] #market risk 6
+    eta = swing_options[s][10] #theta 5
+    jump_intensity = swing_options[s][11] #2.5
+    speed = swing_options[s][12] #kappa 1
+    volatility_km = swing_options[s][13] #sigma 0.2
+    grid_t = swing_options[s][14]
+    grid_x = swing_options[s][15]
+    grid_y = swing_options[s][16]
 
-    curveShape = []
-    for d in exerciseDates:
-        t = ql.Actual365Fixed().yearFraction(todaysDate, d)
+    curve_shape = []
+    for d in exercise_dates:
+        t = ql.Actual365Fixed().yearFraction(todays_date, d)
         gs = (
             math.log(underlying.value())
-            - volatility * volatility / (4 * speed) * (1 - math.exp(-2 * speed * t))
-            - jumpIntensity / beta * math.log((eta - math.exp(-beta * t)) / (eta - 1.0))
+            - volatility_km * volatility_km / (4 * speed) * (1 - math.exp(-2 * speed * t))
+            - jump_intensity / beta * math.log((eta - math.exp(-beta * t)) / (eta - 1.0))
         )
-        curveShape.append((t, gs))
+        curve_shape.append((t, gs))
 
-    ouProcess = ql.ExtendedOrnsteinUhlenbeckProcess(speed, volatility, x0, lambda x: x0)
-    jProcess = ql.ExtOUWithJumpsProcess(ouProcess, x1, beta, jumpIntensity, eta)
+    ou_process = ql.ExtendedOrnsteinUhlenbeckProcess(speed, volatility_km, x0, lambda x: x0)
+    j_process = ql.ExtOUWithJumpsProcess(ou_process, x1, beta, jump_intensity, eta)
 
-    swingOption.setPricingEngine(ql.FdSimpleExtOUJumpSwingEngine(jProcess, riskFreeRate, gridT, gridX, gridY, curveShape))
+    swing_option_object.setPricingEngine(ql.FdSimpleExtOUJumpSwingEngine(j_process, risk_free_rate, grid_t, grid_x, grid_y, curve_shape))
 
-    km_price = swingOption.NPV()
+    km_price = swing_option_object.NPV()
     # print price outputs
     print(rule)
     report_out("Swing Option " + str(s + 1), bs_price ,km_price , "Price")
