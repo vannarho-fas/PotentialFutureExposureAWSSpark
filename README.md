@@ -146,6 +146,7 @@ aws emr create-cluster \
 
 </pre></code>
 
+
 ### By AWS Console
 
 Go to EMR and "Create Cluster". Go to "Advanced Options". In "software configuration" choose release 6.0.0 plus check "Hadoop", "Hive", "Hue", "Zepplin" and "Spark". Choose "next". In "Hardware" choose 4 x core nodes. Choose servers with at least 16GB memory. The disk size needs to be as big or bigger than the AMI image (e.g. >=8G).
