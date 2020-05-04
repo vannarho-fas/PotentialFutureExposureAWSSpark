@@ -109,7 +109,7 @@ Once you're connect to the instance, you'll install the base software required.
 
 ssh into the box using your local PEM file and the specific machine address. e.g. `ssh -i /Users/XX/XX.pem ec2-user@ec2-XX-XX-XXX-XXX.ap-southeast-2.compute.amazonaws.com`. 
 
-Run the 1504_PFE_INSTALL_PACKAGES.sh script either by downloading it (e.g. `wget https://raw.githubusercontent.com/fordesmith/PotentialFutureExposureAWSSpark/master/1304instpack_pip.sh`) and running it (e.g. sudo bash ./1504_PFE_INSTALL_PACKAGES.sh).
+Run the 1504_PFE_INSTALL_PACKAGES.sh script by downloading it (<pre><code> wget https://raw.githubusercontent.com/fordesmith/PotentialFutureExposureAWSSpark/master/1304instpack_pip.sh </pre></code>) and running it (<pre><code>sudo bash ./1504_PFE_INSTALL_PACKAGES.sh</pre></code>).
 
 The AMI provides the base packages required for the cluster instance. 
 
