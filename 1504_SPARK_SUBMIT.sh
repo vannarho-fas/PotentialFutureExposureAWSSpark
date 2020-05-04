@@ -17,7 +17,7 @@ sudo spark-submit \
 --master yarn \
 --conf spark.driver.extraLibraryPath="${LD_LIBRARY_PATH}" \
 --conf spark.executorEnv.LD_LIBRARY_PATH="${LD_LIBRARY_PATH}"  \
---num-executors 2 \
+--num-executors 10 \
 --conf spark.executor.memoryOverhead=5G \
 --executor-memory 50G \
 --conf spark.driver.memoryOverhead=2G \
