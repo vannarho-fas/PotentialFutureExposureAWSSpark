@@ -1,6 +1,4 @@
 # Adjust environment variables as needed
-# LD_LIBRARY_PATH=/usr/local/lib
-# export LD_LIBRARY_PATH=$LD_LIBRARY_PATH
 export PYSPARK_DRIVER_PYTHON=/usr/bin/python3
 export PYSPARK_PYTHON=python3
 export PYTHONPATH=/usr/bin/python3
