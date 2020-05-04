@@ -58,15 +58,51 @@ def load_swing_options(instruments_file):
         .collect()
     return swingO
 
+# write column headings
+def format_price(p, digits=2):
+    fmt = "%%.%df" % digits
+    return fmt % p
+
+
+def format_rate(r, digits=2):
+    fmt = "%%.%df %%%%" % digits
+    return fmt % (r * 100)
+
+
+def report_out(Info, bS, kM, fmt):
+    if fmt == "Price":
+        bS = format_price(bS)
+        kM = format_price(kM)
+    else:
+        bS = format_rate(bS)
+        kM = format_rate(kM)
+
+    print("%19s" % Info + " |" + " |".join(["%15s" % y for y in [bS, kM]]))
+
+#Config
 conf = SparkConf().setAppName("swing-poc")
 sc = SparkContext(conf=conf)
 sc.setLogLevel('INFO')
 
+#Load dates, options
 nymexCurveDates, nymexRates = load_nymex_curve('/Users/forsmith/Documents/PotentialFutureExposureAWSSpark/work-in-progress/nymexhh-gas-forward-curve.csv')
 nymexCurveDates = [ql.DateParser.parseFormatted(r, '%Y-%m-%d') for r in nymexCurveDates]
 swingOpts = load_swing_options('/Users/forsmith/Documents/PotentialFutureExposureAWSSpark/work-in-progress/instruments.csv')
 
+#set up printing
+headers = [" Black Scholes ", " Kluge Model "]
+print("")
+print("%19s" % "" + " |" + " |".join(["%10s" % y for y in headers]))
+separator = " | "
+widths = [20, 12, 12]
+width = widths[0] + widths[1] + widths[2] + widths[2]
+rule = "-" * width
+dblrule = "=" * width
+tab = " " * 1
+
+# main loop through swing options in instruments for BS and KM pricing models
 for s in range(len(swingOpts)):
+# Black Scholes price
     todaysDate = str_to_qldate(swingOpts[s][0])
     ql.Settings.instance().evaluationDate = todaysDate
     settlementDate = todaysDate
@@ -94,8 +130,9 @@ for s in range(len(swingOpts)):
     )
 
     swingOption.setPricingEngine(ql.FdSimpleBSSwingEngine(bsProcess))
+    bs_price = swingOption.NPV()
 
-    print("Swing Option " + str(s+1) + " - Black Scholes Price: %f" % swingOption.NPV())
+    # print("Swing Option " + str(s+1) + " - Black Scholes Price: %f" % swingOption.NPV())
 
 # Kluge Model Price
 
@@ -125,4 +162,10 @@ for s in range(len(swingOpts)):
 
     swingOption.setPricingEngine(ql.FdSimpleExtOUJumpSwingEngine(jProcess, riskFreeRate, gridT, gridX, gridY, curveShape))
 
-    print("Swing Option " + str(s+1) + " - Kluge Model Price  : %f" % swingOption.NPV())
+    km_price = swingOption.NPV()
+
+   # print("Swing Option " + str(s+1) + " - Kluge Model Price  : %f" % swingOption.NPV())
+    print(rule)
+    report_out("Swing Option " + str(s + 1), bs_price ,km_price , "Price")
+
+print(rule)
