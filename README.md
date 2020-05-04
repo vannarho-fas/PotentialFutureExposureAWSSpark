@@ -57,8 +57,8 @@ This work would not have been possible without the specific help, Python design 
 * https://www.implementingquantlib.com/ - thanks to Luigi for being the "father" of Quantlib and for replying to my questions
 * https://quantlib-python-docs.readthedocs.io/en/latest/
 * http://gouthamanbalaraman.com/blog/hull-white-simulation-quantlib-python.html
-* http://suhasghorp.com/estimating-potential-future-exposure
 * https://ipythonquant.wordpress.com/2015/04/08/expected-exposure-and-pfe-simulation-with-quantlib-and-python/
+* http://suhasghorp.com/estimating-potential-future-exposure
 
 ...and all the people who helped on Stack Overflow or otherwise. 
 
