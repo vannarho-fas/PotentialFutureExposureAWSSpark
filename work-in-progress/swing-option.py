@@ -116,14 +116,14 @@ for s in range(len(swing_options)):
         ql.VanillaForwardPayoff(ql.Option.Call, underlying.value()), ql.SwingExercise(exercise_dates), 0, len(exercise_dates)
     )
 
-    bsProcess = ql.BlackScholesMertonProcess(
+    bs_process = ql.BlackScholesMertonProcess(
       ql.QuoteHandle(underlying),
      ql.YieldTermStructureHandle(dividend_yield),
      ql.YieldTermStructureHandle(risk_free_rate),
         ql.BlackVolTermStructureHandle(volatility_bs),
     )
 
-    swing_option_object.setPricingEngine(ql.FdSimpleBSSwingEngine(bsProcess))
+    swing_option_object.setPricingEngine(ql.FdSimpleBSSwingEngine(bs_process))
     bs_price = swing_option_object.NPV()
 
 # Kluge Model Price
