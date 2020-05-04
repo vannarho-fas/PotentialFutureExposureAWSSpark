@@ -1,4 +1,4 @@
-# Potential Future Exposure estimation using QuantLib, AWS Elastic Map Reduce & Spark
+# Potential Future Exposure estimation using Python, QuantLib, Spark on AWS Elastic Map Reduce
 
 *A first-draft proof of concept ("POC") for estimating potential future exposure ("PFE") with QuantLib and AWS Elastic Map Reduce ("EMR").*
 
@@ -127,8 +127,6 @@ Once complete, choose "Image > Create Image" to save an AMI to use for your clus
 This assumes you've set up the AWS CLI. 
 
 <pre><code>
-
-
 aws emr create-cluster \
 --applications Name=Hadoop Name=Hive Name=Hue Name=Spark Name=Zeppelin \
 --ec2-attributes '{"KeyName":"*YOUR_KEY*","InstanceProfile":"EMR_EC2_DefaultRole","SubnetId":"subnet-1aa9dc43","EmrManagedSlaveSecurityGroup":"sg-08f83f2680c4721b9","EmrManagedMasterSecurityGroup":"sg-0f4a0166888d51211"}' \
@@ -144,7 +142,6 @@ aws emr create-cluster \
 --name 'PFE POC' \
 --scale-down-behavior TERMINATE_AT_TASK_COMPLETION \
 --region *YOUR_REGION*
-
 </pre></code>
 
 
@@ -183,12 +180,13 @@ If you are adjusting the files here or developing your own, format dates as YYYY
 
 ## The key aspects of the PFE script for running the simulations
 
+Assumes you are using Python3. 
+
 ### Gather inputs
 
 #### Load modules
 
 <pre><code>
-
 from pyspark import SparkConf, SparkContext
 from pyspark.mllib.random import RandomRDDs
 import QuantLib as ql
@@ -196,13 +194,11 @@ import datetime as dt
 import numpy as np
 import math
 import sys
-
 </pre></code>
 
 #### Define and set start date
 
 <pre><code>
-
     broadcast_dict = {}
     pytoday = dt.datetime(2020, 4, 7)
     broadcast_dict['python_today'] = pytoday
@@ -210,13 +206,11 @@ import sys
     ql.Settings.instance().evaluationDate = today
     usd_calendar = ql.UnitedStates()
     usd_dc = ql.Actual365Fixed()
-    
 </pre></code>
 
 #### Load historical libor rates, swap specifications and FxFwd specifications from input file into an RDD and collect the results
 
 <pre><code>
-
 def load_libor_fixings(libor_fixings_file):
     libor_fixings = sc.textFile(libor_fixings_file) \
         .map(lambda line: line.split(",")) \
@@ -242,7 +236,6 @@ def load_fxfwds(instruments_file):
         .map(lambda line: (str(line[1]), str(line[2]), float(line[3]), float(line[4]), str(line[5]), str(line[6]))) \
         .collect()
     return fxfwds
-    
 </pre></code>
     
 ** Daily Libor rates are 3M USD Libor rates for previous years
@@ -254,7 +247,6 @@ def load_fxfwds(instruments_file):
 #### Build a QuantLib swap and index object
 
 <pre><code>
-
 def create_quantlib_swap_object(today, start, maturity, nominal, fixedRate, index, typ=ql.VanillaSwap.Payer):
     calendar = ql.UnitedStates()
     fixedLegTenor = ql.Period(6, ql.Months)
@@ -288,13 +280,11 @@ def create_quantlib_swap_object(today, start, maturity, nominal, fixedRate, inde
                           spread,
                           index.dayCounter())
     return swap, [index.fixingDate(x) for x in floatSchedule if index.fixingDate(x) >= today][:-1]
-    
 </pre></code>
 
 #### Build QuantLib index object
 
 <pre><code>
-
     usdlibor3m = ql.USDLibor(ql.Period(3, ql.Months), usd_disc_term_structure)
     fixing_dates, fixings = load_libor_fixings(libor_fixings_file)
     fixing_dates = [ql.DateParser.parseFormatted(r, '%Y-%m-%d') for r in fixing_dates]
@@ -318,22 +308,18 @@ def create_quantlib_swap_object(today, start, maturity, nominal, fixedRate, inde
 
     longest_swap_maturity = max([s[0].maturityDate() for s in swaps])
     broadcast_dict['longest_swap_maturity'] = quantlib_date_to_datetime(longest_swap_maturity)
-    
  </pre></code>
     
 #### Generate a matrix of normally distributed random numbers and spread them across the cluster - used the default settings from Spark for the partitions. 
 
 <pre><code>
-  
   random_array_rdd = RandomRDDs.normalVectorRDD(sc, Nsim, len(T), seed=1)
-
 </pre></code>
 
     
 #### Hull White parameter estimations to generate USD & EUR discount factors
 
 <pre><code>
-
     def gamma(t):
         forwardRate = usd_t0_curve.forwardRate(t, t, ql.Continuous, ql.NoFrequency).rate()
         temp = sigma * (1.0 - np.exp(- a * t)) / a
@@ -355,14 +341,12 @@ def create_quantlib_swap_object(today, start, maturity, nominal, fixedRate, inde
 
     spotmat = np.zeros(shape=(len(time_grid)))
     spotmat[:] = eurusd_fx_spot
-    
 </pre></code>
 
 
 #### Loop through dates and define NPVs (including Garman-Kohlagen process to build FX rate simulation for FxFwd)
 
 <pre><code>
-
     for iT in range(1, len(time_grid)):
         mean = usd_rmat[iT - 1] * np.exp(- a * (time_grid[iT] - time_grid[iT - 1])) + \
                gamma(time_grid[iT]) - gamma(time_grid[iT - 1]) * \
@@ -447,25 +431,20 @@ def create_quantlib_swap_object(today, start, maturity, nominal, fixedRate, inde
         npvMat[iT, 1] = nettingset_npv - collateral_held
 
     return np.array2string(npvMat, formatter={'float_kind': '{0:.6f}'.format})
-
 </pre></code>
 
 #### Define the NPV cube array
 
 <pre><code>
-
     npv_list = random_array_rdd.map(lambda p: (calculate_potential_future_exposure(p, T, br_dict))).collect()
 
     npv_dataframe = sc.parallelize(npv_list)
-  
   </pre></code>
   
 #### write out the npv cube
   
   <pre><code>
- 
     npv_dataframe.coalesce(1).saveAsTextFile(output_dir + '/exposure_scenarios')
-    
 </pre></code>
 
 
@@ -476,7 +455,6 @@ Copy the files in this repo to your s3 bucket and amend the 1504_SPARK_SUBMIT.sh
 After the spark job completes, it will create an "output" folder in your s3 bucket. The output files  are time-grid array and NPV cube. 
 
 <pre><code>
-
 # Adjust environment variables as needed
 export PYSPARK_DRIVER_PYTHON=/usr/bin/python3
 export PYSPARK_PYTHON=python3
@@ -485,7 +463,6 @@ export HADOOP_CONF_DIR=$HADOOP_HOME/etc/hadoop
 export YARN_CONF_DIR=$HADOOP_HOME/etc/hadoop
 export LD_LIBRARY_PATH=/usr/lib/hadoop/lib/native
 export SPARK_HOME=/usr/lib/spark
-
 
 # submit Spark job - adjust s3 bucket, filenames and scenario variables as needed
 sudo spark-submit \
@@ -507,7 +484,6 @@ s3://*YOUR_S3*/1504_EUR_LIB_SWAP_CURVE.csv \
 s3://*YOUR_S3*/1504_USD3MTD156N.csv \
 s3://*YOUR_S3*/1504_INSTRUMENTS.csv \
 s3://*YOUR_S3*/output0105
-
 </pre></code>
 
 Note: this cluster design has not been optimised and is one of the areas I'd like to explore further. 
