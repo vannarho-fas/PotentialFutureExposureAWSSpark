@@ -122,10 +122,22 @@ Once complete, choose "Image > Create Image" to save an AMI to use for your clus
 
 ## Setting up the cluster
 
+### By Terminal
+
+This assumes you've set up the AWS CLI. 
+
+<pre><code>
+
+aws emr create-cluster --applications Name=Hadoop Name=Hive Name=Hue Name=Spark Name=Zeppelin --ec2-attributes '{"KeyName":"pfeAMI","InstanceProfile":"EMR_EC2_DefaultRole","SubnetId":"subnet-1aa9dc43","EmrManagedSlaveSecurityGroup":"sg-08f83f2680c4721b9","EmrManagedMasterSecurityGroup":"sg-0f4a0166888d51211"}' --release-label emr-6.0.0 --log-uri 's3n://aws-logs-952436753265-ap-southeast-2/elasticmapreduce/' --instance-groups '[{"InstanceCount":4,"EbsConfiguration":{"EbsBlockDeviceConfigs":[{"VolumeSpecification":{"SizeInGB":64,"VolumeType":"gp2"},"VolumesPerInstance":4}]},"InstanceGroupType":"CORE","InstanceType":"m5a.4xlarge","Name":"Core - 10"},{"InstanceCount":1,"EbsConfiguration":{"EbsBlockDeviceConfigs":[{"VolumeSpecification":{"SizeInGB":32,"VolumeType":"gp2"},"VolumesPerInstance":2}]},"InstanceGroupType":"MASTER","InstanceType":"m5.xlarge","Name":"Master - 1"}]' --custom-ami-id ami-005c22d6ce5ca06ce --auto-scaling-role EMR_AutoScaling_DefaultRole --ebs-root-volume-size 16 --service-role EMR_DefaultRole --enable-debugging --repo-upgrade-on-boot SECURITY --name 'PFE POC' --scale-down-behavior TERMINATE_AT_TASK_COMPLETION --region ap-southeast-2
+
+</pre></code>
+
+### By AWS Console
+
 Go to EMR and "Create Cluster". Go to "Advanced Options". In "software configuration" choose release 6.0.0 plus check "Hadoop", "Hive", "Hue", "Zepplin" and "Spark". Choose "next". In "Hardware" choose 4 x core nodes. Choose servers with at least 16GB memory. The disk size needs to be as big or bigger than the AMI image (e.g. >=8G).
 
 For my test I used the following config: 
-** Executors: tried both 4 and 14 servers
+** Executors: 
 m5a.4xlarge
 16 vCore, 64 GiB memory, EBS only storage
 EBS Storage:256 GiB
@@ -136,28 +148,6 @@ m5.xlarge
 EBS Storage:64 GiB
 
 Leave other settings as is. Choose "next". In "Additional Options" choose the AMI you created above. Choose "next". In "Security Options" choose the key pair you created and downloaded. Then "create cluster". 
-
-Alternatively, you can create the cluster via a terminal assuming you've installed the AWS CLI (updating the below to suit your spec). 
-
-<pre><code>
-
-aws emr create-cluster \
---applications Name=Hadoop Name=Hive Name=Hue Name=Spark Name=Zeppelin \
---ec2-attributes '{"KeyName":"pfeAMI","InstanceProfile":"EMR_EC2_DefaultRole","SubnetId":"subnet-1aa9dc43","EmrManagedSlaveSecurityGroup":"sg-08f83f2680c4721b9","EmrManagedMasterSecurityGroup":"sg-0f4a0166888d51211"}' \
---release-label emr-6.0.0 \
---log-uri 's3n://aws-logs-952436753265-ap-southeast-2/elasticmapreduce/' \
---instance-groups '[{"InstanceCount":4,"EbsConfiguration":{"EbsBlockDeviceConfigs":[{"VolumeSpecification":{"SizeInGB":64,"VolumeType":"gp2"},"VolumesPerInstance":4}]},"InstanceGroupType":"CORE","InstanceType":"m5a.4xlarge","Name":"Core - 10"},{"InstanceCount":1,"EbsConfiguration":{"EbsBlockDeviceConfigs":[{"VolumeSpecification":{"SizeInGB":32,"VolumeType":"gp2"},"VolumesPerInstance":2}]},"InstanceGroupType":"MASTER","InstanceType":"m5.xlarge","Name":"Master - 1"}]' \
---custom-ami-id ami-005c22d6ce5ca06ce \
---auto-scaling-role EMR_AutoScaling_DefaultRole \
---ebs-root-volume-size 16 \
---service-role EMR_DefaultRole \
---enable-debugging \
---repo-upgrade-on-boot SECURITY \
---name 'PFE POC' \
---scale-down-behavior TERMINATE_AT_TASK_COMPLETION \
---region ap-southeast-2
-
-</pre></code>
 
 A spark cluster has n nodes managed by a central master. This allows it offer large scale parallel processing. 
 
