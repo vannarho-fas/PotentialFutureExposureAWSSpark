@@ -1,9 +1,9 @@
 # Potential Future Exposure estimation using QuantLib, AWS Elastic Map Reduce & Spark
 
-*A proof of concept ("POC") for estimating potential future exposure ("PFE") with QuantLib and AWS Elastic Map Reduce ("EMR").*
+*A first-draft proof of concept ("POC") for estimating potential future exposure ("PFE") with QuantLib and AWS Elastic Map Reduce ("EMR").*
 
-This will cover:
-* The methods used for determing the potential exposure over different time periods for different over-the-counter ("OTC") products (for this exercise, two interest rates swaps and one foreign exchange forward ("FXFwd")
+This covers:
+* The methods used for determing the potential exposure over different time periods for different over-the-counter ("OTC") products (for this exercise, two interest rates swaps and one foreign exchange forward ("FXFwd") - includes basic netting, collateral
 * The steps needed to build and run the infrastructure and software and then analyse the data outputs
 * The proposed next steps to further extend this POC further
 
@@ -57,8 +57,8 @@ This work would not have been possible without the specific help, Python design 
 * https://www.implementingquantlib.com/ - thanks to Luigi for being the "father" of Quantlib and for replying to my questions
 * https://quantlib-python-docs.readthedocs.io/en/latest/
 * http://gouthamanbalaraman.com/blog/hull-white-simulation-quantlib-python.html
-* http://suhasghorp.com/estimating-potential-future-exposure
 * https://ipythonquant.wordpress.com/2015/04/08/expected-exposure-and-pfe-simulation-with-quantlib-and-python/
+* http://suhasghorp.com/estimating-potential-future-exposure
 
 ...and all the people who helped on Stack Overflow or otherwise. 
 
@@ -109,7 +109,12 @@ Once you're connect to the instance, you'll install the base software required.
 
 ssh into the box using your local PEM file and the specific machine address. e.g. `ssh -i /Users/XX/XX.pem ec2-user@ec2-XX-XX-XXX-XXX.ap-southeast-2.compute.amazonaws.com`. 
 
-Run the 1504_PFE_INSTALL_PACKAGES.sh script either by downloading it (e.g. `wget https://raw.githubusercontent.com/fordesmith/PotentialFutureExposureAWSSpark/master/1304instpack_pip.sh`) and running it (e.g. sudo bash ./1504_PFE_INSTALL_PACKAGES.sh).
+Run the 1504_PFE_INSTALL_PACKAGES.sh script by downloading it:
+
+<pre><code> 
+wget https://raw.githubusercontent.com/fordesmith/PotentialFutureExposureAWSSpark/master/1504_PFE_INSTALL_PACKAGES.sh
+sudo bash ./1504_PFE_INSTALL_PACKAGES.sh
+</pre></code>
 
 The AMI provides the base packages required for the cluster instance. 
 
@@ -141,7 +146,7 @@ aws emr create-cluster \
 --ec2-attributes '{"KeyName":"pfeAMI","InstanceProfile":"EMR_EC2_DefaultRole","SubnetId":"subnet-1aa9dc43","EmrManagedSlaveSecurityGroup":"sg-08f83f2680c4721b9","EmrManagedMasterSecurityGroup":"sg-0f4a0166888d51211"}' \
 --release-label emr-6.0.0 \
 --log-uri 's3n://aws-logs-952436753265-ap-southeast-2/elasticmapreduce/' \
---instance-groups '[{"InstanceCount":4,"EbsConfiguration":{"EbsBlockDeviceConfigs":[{"VolumeSpecification":{"SizeInGB":64,"VolumeType":"gp2"},"VolumesPerInstance":4}]},"InstanceGroupType":"CORE","InstanceType":"m5a.4xlarge","Name":"Core - 2"},{"InstanceCount":1,"EbsConfiguration":{"EbsBlockDeviceConfigs":[{"VolumeSpecification":{"SizeInGB":32,"VolumeType":"gp2"},"VolumesPerInstance":2}]},"InstanceGroupType":"MASTER","InstanceType":"m5.xlarge","Name":"Master - 1"}]' \
+--instance-groups '[{"InstanceCount":4,"EbsConfiguration":{"EbsBlockDeviceConfigs":[{"VolumeSpecification":{"SizeInGB":64,"VolumeType":"gp2"},"VolumesPerInstance":4}]},"InstanceGroupType":"CORE","InstanceType":"m5a.4xlarge","Name":"Core - 10"},{"InstanceCount":1,"EbsConfiguration":{"EbsBlockDeviceConfigs":[{"VolumeSpecification":{"SizeInGB":32,"VolumeType":"gp2"},"VolumesPerInstance":2}]},"InstanceGroupType":"MASTER","InstanceType":"m5.xlarge","Name":"Master - 1"}]' \
 --custom-ami-id ami-005c22d6ce5ca06ce \
 --auto-scaling-role EMR_AutoScaling_DefaultRole \
 --ebs-root-volume-size 16 \
@@ -158,7 +163,8 @@ A spark cluster has n nodes managed by a central master. This allows it offer la
 
 ![Spark Cluster Diagram](https://raw.githubusercontent.com/fordesmith/PotentialFutureExposureAWSSpark/master/visualisations/cluster-overview.png).
 
-For the example here, the job completes in ~1 minute with 14 workers and ~2 minutes with 4 workers. In the first few runs the core NPV was only running on one node and the job took 30 minutes and as a result didn`t speed up when adding up to 30 worker nodes. I tweaked the python code to ensure it spread work across the cluster, but apart from that, I haven`t optimised the job, so you may be able to make it run faster. 
+
+For the example here, the job completes in ~1 minute with 14 workers and ~2 minutes with 4 workers. In the first few runs the core NPV was only running on one node and the job took 30 minutes (and as a result woud not speed up when adding further worker nodes). I tweaked the code to ensure the monte carlo simulations spread work across the cluster. Apart from that, I have not optimised the job, so you may be able to make it run faster. 
 
 ## Creating the input files
 
@@ -179,7 +185,6 @@ If you are adjusting the files here or developing your own, format dates as YYYY
 
 from pyspark import SparkConf, SparkContext
 from pyspark.mllib.random import RandomRDDs
-from pyspark import AccumulatorParam
 import QuantLib as ql
 import datetime as dt
 import numpy as np
@@ -192,13 +197,13 @@ import sys
 
 <pre><code>
 
-   broadcast_dict = br_dict.value
-    today = py_to_qldate(broadcast_dict['python_today'])
-    ql.Settings.instance().setEvaluationDate(today)
+    broadcast_dict = {}
+    pytoday = dt.datetime(2020, 4, 7)
+    broadcast_dict['python_today'] = pytoday
+    today = ql.Date(pytoday.day, pytoday.month, pytoday.year)
+    ql.Settings.instance().evaluationDate = today
     usd_calendar = ql.UnitedStates()
     usd_dc = ql.Actual365Fixed()
-    eur_calendar = ql.TARGET()
-    eur_dc = ql.ActualActual()
     
 </pre></code>
 
@@ -206,31 +211,29 @@ import sys
 
 <pre><code>
 
-def loadLiborFixings(libor_fixings_file):
-
+def load_libor_fixings(libor_fixings_file):
     libor_fixings = sc.textFile(libor_fixings_file) \
         .map(lambda line: line.split(",")) \
-        .filter(lambda r: is_number(r[1])) \
+        .filter(lambda r: value_is_number(r[1])) \
         .map(lambda line: (str(line[0]), float(line[1]))).cache()
 
-    fixingDates = libor_fixings.map(lambda r: r[0]).collect()
+    fixing_dates = libor_fixings.map(lambda r: r[0]).collect()
     fixings = libor_fixings.map(lambda r: r[1]).collect()
-    return fixingDates, fixings
+    return fixing_dates, fixings
 
-
-def load_swaps(instruments_file):
+def load_irs_swaps(instruments_file):
     swaps = sc.textFile(instruments_file) \
-            .map(lambda line: line.split(",")) \
-            .filter(lambda r: r[0] == 'IRS') \
-            .map(lambda line: (str(line[1]), str(line[2]), float(line[3]), float(line[4]), str(line[5])))\
-            .collect()
+        .map(lambda line: line.split(",")) \
+        .filter(lambda r: r[0] == 'IRS') \
+        .map(lambda line: (str(line[1]), str(line[2]), float(line[3]), float(line[4]), str(line[5]))) \
+        .collect()
     return swaps
 
 def load_fxfwds(instruments_file):
     fxfwds = sc.textFile(instruments_file) \
         .map(lambda line: line.split(",")) \
         .filter(lambda r: r[0] == 'FXFWD') \
-        .map(lambda line: (str(line[1]), str(line[2]), float(line[3]), float(line[4]), str(line[5]), str(line[6])))\
+        .map(lambda line: (str(line[1]), str(line[2]), float(line[3]), float(line[4]), str(line[5]), str(line[6]))) \
         .collect()
     return fxfwds
     
@@ -241,14 +244,12 @@ def load_fxfwds(instruments_file):
 ** FxFwd specifications: commencement date, term, amount, rate, currency 1, currency 2
 ** Load USD, EUR libor swap curve from input file
 
- 
-### Prepare objects from inputs
 
 #### Build a QuantLib swap and index object
 
 <pre><code>
 
-def makeSwap(today, start, maturity, nominal, fixedRate, index, typ=ql.VanillaSwap.Payer):
+def create_quantlib_swap_object(today, start, maturity, nominal, fixedRate, index, typ=ql.VanillaSwap.Payer):
     calendar = ql.UnitedStates()
     fixedLegTenor = ql.Period(6, ql.Months)
     floatingLegBDC = ql.ModifiedFollowing
@@ -280,8 +281,6 @@ def makeSwap(today, start, maturity, nominal, fixedRate, index, typ=ql.VanillaSw
                           index,
                           spread,
                           index.dayCounter())
-                          
-                          
     return swap, [index.fixingDate(x) for x in floatSchedule if index.fixingDate(x) >= today][:-1]
     
 </pre></code>
@@ -291,38 +290,36 @@ def makeSwap(today, start, maturity, nominal, fixedRate, index, typ=ql.VanillaSw
 <pre><code>
 
     usdlibor3m = ql.USDLibor(ql.Period(3, ql.Months), usd_disc_term_structure)
-    # don't need EUR fixings since we don't have a EUR swap
-    fixingDates, fixings = loadLiborFixings(libor_fixings_file)
-    fixingDates = [ql.DateParser.parseFormatted(r, '%Y-%m-%d') for r in fixingDates]
+    fixing_dates, fixings = load_libor_fixings(libor_fixings_file)
+    fixing_dates = [ql.DateParser.parseFormatted(r, '%Y-%m-%d') for r in fixing_dates]
     three_month_old_date = usd_calendar.advance(today, -90, ql.Days, ql.ModifiedFollowing)
-    latestFixingDates = fixingDates[fixingDates.index(three_month_old_date):]
-    latestFixings = fixings[fixingDates.index(three_month_old_date):]
-    usdlibor3m.addFixings(latestFixingDates, latestFixings)
-    broadcast_dict['fixing_dates'] = [ql_to_datetime(x) for x in latestFixingDates]
+    latestfixing_dates = fixing_dates[fixing_dates.index(three_month_old_date):]
+    latestFixings = fixings[fixing_dates.index(three_month_old_date):]
+    usdlibor3m.addFixings(latestfixing_dates, latestFixings)
+    broadcast_dict['fixing_dates'] = [quantlib_date_to_datetime(x) for x in latestfixing_dates]
     broadcast_dict['fixings'] = latestFixings
-
-    swaps = load_swaps(instruments_file)
+    swaps = load_irs_swaps(instruments_file)
     broadcast_dict['swaps'] = swaps
     fxfwds = load_fxfwds(instruments_file)
     broadcast_dict['fxfwds'] = fxfwds
 
     swaps = [
-                makeSwap(today, ql.DateParser.parseFormatted(swap[0], '%Y-%m-%d'),
-                     ql.Period(swap[1]), swap[2], swap[3], usdlibor3m,
-                     ql.VanillaSwap.Payer if swap[4] == 'Payer' else ql.VanillaSwap.Receiver)
-                for swap in swaps
-            ]
+        create_quantlib_swap_object(today, ql.DateParser.parseFormatted(swap[0], '%Y-%m-%d'),
+                                    ql.Period(swap[1]), swap[2], swap[3], usdlibor3m,
+                                    ql.VanillaSwap.Payer if swap[4] == 'Payer' else ql.VanillaSwap.Receiver)
+        for swap in swaps
+    ]
 
     longest_swap_maturity = max([s[0].maturityDate() for s in swaps])
-    broadcast_dict['longest_swap_maturity'] = ql_to_datetime(longest_swap_maturity)
+    broadcast_dict['longest_swap_maturity'] = quantlib_date_to_datetime(longest_swap_maturity)
     
  </pre></code>
     
-#### Generate a matrix of normally distributed random numbers and spread them across the cluster. I've used the default settings from Spark for the partitions. 
+#### Generate a matrix of normally distributed random numbers and spread them across the cluster - used the default settings from Spark for the partitions. 
 
 <pre><code>
   
-  randArrayRDD = RandomRDDs.normalVectorRDD(sc, Nsim, len(T), seed=1)
+  random_array_rdd = RandomRDDs.normalVectorRDD(sc, Nsim, len(T), seed=1)
 
 </pre></code>
 
@@ -345,7 +342,7 @@ def makeSwap(today, start, maturity, nominal, fixedRate, index, typ=ql.VanillaSw
         return np.exp(value) * usd_t0_curve.discount(T) / usd_t0_curve.discount(t)
 
     usd_rmat = np.zeros(shape=(len(time_grid)))
-    usd_rmat[:] = usd_t0_curve.forwardRate(0,0, ql.Continuous, ql.NoFrequency).rate()
+    usd_rmat[:] = usd_t0_curve.forwardRate(0, 0, ql.Continuous, ql.NoFrequency).rate()
 
     eur_rmat = np.zeros(shape=(len(time_grid)))
     eur_rmat[:] = eur_t0_curve.forwardRate(0, 0, ql.Continuous, ql.NoFrequency).rate()
@@ -363,30 +360,33 @@ def makeSwap(today, start, maturity, nominal, fixedRate, index, typ=ql.VanillaSw
     for iT in range(1, len(time_grid)):
         mean = usd_rmat[iT - 1] * np.exp(- a * (time_grid[iT] - time_grid[iT - 1])) + \
                gamma(time_grid[iT]) - gamma(time_grid[iT - 1]) * \
-                                        np.exp(- a * (time_grid[iT] - time_grid[iT - 1]))
+               np.exp(- a * (time_grid[iT] - time_grid[iT - 1]))
 
         var = 0.5 * sigma * sigma / a * (1 - np.exp(-2 * a * (time_grid[iT] - time_grid[iT - 1])))
-        rnew = mean + rnumbers[iT-1] * np.sqrt(var)
+        rnew = mean + random_numbers[iT - 1] * np.sqrt(var)
         usd_rmat[iT] = rnew
         # USD discount factors as generated by HW model
         usd_disc_factors = [1.0] + [A(time_grid[iT], time_grid[iT] + k) *
-                                np.exp(- B(time_grid[iT], time_grid[iT] + k) * rnew) for k in range(1, maturity + 1)]
+                                    np.exp(- B(time_grid[iT], time_grid[iT] + k) * rnew) for k in
+                                    range(1, maturity + 1)]
 
         mean = eur_rmat[iT - 1] * np.exp(- a * (time_grid[iT] - time_grid[iT - 1])) + \
                gamma(time_grid[iT]) - gamma(time_grid[iT - 1]) * \
-                                      np.exp(- a * (time_grid[iT] - time_grid[iT - 1]))
+               np.exp(- a * (time_grid[iT] - time_grid[iT - 1]))
 
         var = 0.5 * sigma * sigma / a * (1 - np.exp(-2 * a * (time_grid[iT] - time_grid[iT - 1])))
-        rnew = mean + rnumbers[iT - 1] * np.sqrt(var)
+        rnew = mean + random_numbers[iT - 1] * np.sqrt(var)
         eur_rmat[iT] = rnew
+
         # EUR discount factors as generated by HW model
         eur_disc_factors = [1.0] + [A(time_grid[iT], time_grid[iT] + k) *
-                                    np.exp(- B(time_grid[iT], time_grid[iT] + k) * rnew) for k in range(1, maturity + 1)]
+                                    np.exp(- B(time_grid[iT], time_grid[iT] + k) * rnew) for k in
+                                    range(1, maturity + 1)]
 
         if dates[iT].serialNumber() > longest_swap_maturity.serialNumber():
             break
 
-        # very important to reset the valuation date
+        # Reset the valuation date
         ql.Settings.instance().setEvaluationDate(dates[iT])
         crv_date = dates[iT]
         crv_dates = [crv_date] + [crv_date + ql.Period(k, ql.Years) for k in range(1, maturity + 1)]
@@ -404,7 +404,7 @@ def makeSwap(today, start, maturity, nominal, fixedRate, index, typ=ql.VanillaSw
         gk_process = ql.GarmanKohlagenProcess(ql.QuoteHandle(ql.SimpleQuote(eurusd_fx_spot)),
                                               usd_disc_term_structure, eur_disc_term_structure, flat_vol_hyts)
         dt = time_grid[iT] - time_grid[iT - 1]
-        spotmat[iT] = gk_process.evolve(time_grid[iT - 1], spotmat[iT - 1], dt, rnumbers[iT - 1])
+        spotmat[iT] = gk_process.evolve(time_grid[iT - 1], spotmat[iT - 1], dt, random_numbers[iT - 1])
         nettingset_npv = 0.
         for s in range(len(swaps)):
             if usdlibor3m.isValidFixingDate(dates[iT]):
@@ -417,11 +417,12 @@ def makeSwap(today, start, maturity, nominal, fixedRate, index, typ=ql.VanillaSw
             fxfwd_exp = fxfwd_exposure(dates[iT], spotmat[iT], usd_crv)
             nettingset_npv += fxfwd_exp
 
-        # uncollateralized netting set NPV
-        npvMat[iT,0] = nettingset_npv
+        # Uncollateralised netting set NPV
+        npvMat[iT, 0] = nettingset_npv
 
         collateral_held = collateral_held + collateral_posted
         nettingset_npv = nettingset_npv + IA2 - IA1
+
         # Eq. 8.6 Jon Gregory Counterparty CVA book 2nd edition
         collateral_required = max(nettingset_npv - threshold2, 0) \
                               - max(-nettingset_npv - threshold1, 0) - collateral_held
@@ -432,14 +433,14 @@ def makeSwap(today, start, maturity, nominal, fixedRate, index, typ=ql.VanillaSw
         elif -collateral_posted < MTA1:
             collateral_posted = 0.
         if collateral_posted != 0 and rounding != 0:
-            collateral_posted = math.ceil(collateral_posted/rounding) * rounding
+            collateral_posted = math.ceil(collateral_posted / rounding) * rounding
         if collateral_posted < 0:
             collateral_held = collateral_held + collateral_posted
             collateral_posted = 0.
         # collateralized netting set NPV
-        npvMat[iT,1] = nettingset_npv - collateral_held
-        
-    return np.array2string(npvMat, formatter={'float_kind':'{0:.6f}'.format})
+        npvMat[iT, 1] = nettingset_npv - collateral_held
+
+    return np.array2string(npvMat, formatter={'float_kind': '{0:.6f}'.format})
 
 </pre></code>
 
@@ -447,8 +448,8 @@ def makeSwap(today, start, maturity, nominal, fixedRate, index, typ=ql.VanillaSw
 
 <pre><code>
 
-    npv_list = randArrayRDD.map(lambda p: (calc_exposure(p, T, br_dict))).collect()
-    
+    npv_list = random_array_rdd.map(lambda p: (calculate_potential_future_exposure(p, T, br_dict))).collect()
+
     npv_dataframe = sc.parallelize(npv_list)
   
   </pre></code>
@@ -457,7 +458,7 @@ def makeSwap(today, start, maturity, nominal, fixedRate, index, typ=ql.VanillaSw
   
   <pre><code>
  
-    npv_dataframe.coalesce(1).saveAsTextFile(output_dir + '/npv_cube')
+    npv_dataframe.coalesce(1).saveAsTextFile(output_dir + '/exposure_scenarios')
     
 </pre></code>
 
@@ -488,7 +489,7 @@ sudo spark-submit \
 --master yarn \
 --conf spark.driver.extraLibraryPath="${LD_LIBRARY_PATH}" \
 --conf spark.executorEnv.LD_LIBRARY_PATH="${LD_LIBRARY_PATH}"  \
---num-executors 2 \
+--num-executors 10 \
 --conf spark.executor.memoryOverhead=5G \
 --executor-memory 50G \
 --conf spark.driver.memoryOverhead=2G \
@@ -525,21 +526,9 @@ The progran will output something like this:
 
 ## Planned steps to extend the POC
 
-* Add more derivative types e.g. 
-** Credit default swap maturing in 10 years 
-** 10-year interest rate swap, forward starting in 5 years 
-** Forward rate agreement for NYMEX gas for a time period starting in 6 months and ending in 12 months 
-** Cash-settled European swaption referencing 5-year interest rate swap with exercise date in 6 months
-** Physically-settled European swaption referencing 5-year interest rate swap with exercise date in 6 months
-** Bermudan swaption for commodity forward with annual exercise dates 
-** Interest rate cap or floor specified for semi-annual interest rate with maturity
-** Option on a bond maturing in 5 years with the latest exercise date in 1 year 
-** 3-month Eurodollar futures that matures in 1 year  
-** Futures on 20-year treasury bond that matures in 2 years 
-** 6-month option on 2-year futures on 20-year treasury bond 
-
+* Add more OTC derivative types e.g. Swing option for NYMEX gas forward for a time period starting in 6 months and ending in 12 months, credit default swap maturing in 10 years 
 * Extend to and create reports for different counterparties
 * Tune the spark cluster so it performs faster
-
+* Develop an API to enable the job to be triggerred externally
 
 

@@ -9,8 +9,6 @@ export YARN_CONF_DIR=$HADOOP_HOME/etc/hadoop
 export LD_LIBRARY_PATH=/usr/lib/hadoop/lib/native
 export SPARK_HOME=/usr/lib/spark
 
-
-
 # submit Spark job - adjust s3 bucket, filenames and scenario variables as needed
 sudo spark-submit \
 --deploy-mode client \
