@@ -2,7 +2,7 @@
 
 *A proof of concept ("POC") for estimating potential future exposure ("PFE") with QuantLib and AWS Elastic Map Reduce ("EMR").*
 
-This will cover:
+This covers:
 * The methods used for determing the potential exposure over different time periods for different over-the-counter ("OTC") products (for this exercise, two interest rates swaps and one foreign exchange forward ("FXFwd")
 * The steps needed to build and run the infrastructure and software and then analyse the data outputs
 * The proposed next steps to further extend this POC further
