@@ -131,11 +131,11 @@ This assumes you've set up the AWS CLI.
 
 aws emr create-cluster \
 --applications Name=Hadoop Name=Hive Name=Hue Name=Spark Name=Zeppelin \
---ec2-attributes '{"KeyName":"YOUR_KEY","InstanceProfile":"EMR_EC2_DefaultRole","SubnetId":"subnet-1aa9dc43","EmrManagedSlaveSecurityGroup":"sg-08f83f2680c4721b9","EmrManagedMasterSecurityGroup":"sg-0f4a0166888d51211"}' \
+--ec2-attributes '{"KeyName":"*YOUR_KEY*","InstanceProfile":"EMR_EC2_DefaultRole","SubnetId":"subnet-1aa9dc43","EmrManagedSlaveSecurityGroup":"sg-08f83f2680c4721b9","EmrManagedMasterSecurityGroup":"sg-0f4a0166888d51211"}' \
 --release-label emr-6.0.0 \
---log-uri 's3n://aws-logs-YOUR_LOG-YOUR_REGION/elasticmapreduce/' \
+--log-uri 's3n://aws-logs-*YOUR_LOG-YOUR_REGION*/elasticmapreduce/' \
 --instance-groups '[{"InstanceCount":4,"EbsConfiguration":{"EbsBlockDeviceConfigs":[{"VolumeSpecification":{"SizeInGB":64,"VolumeType":"gp2"},"VolumesPerInstance":4}]},"InstanceGroupType":"CORE","InstanceType":"m5a.4xlarge","Name":"Core - 10"},{"InstanceCount":1,"EbsConfiguration":{"EbsBlockDeviceConfigs":[{"VolumeSpecification":{"SizeInGB":32,"VolumeType":"gp2"},"VolumesPerInstance":2}]},"InstanceGroupType":"MASTER","InstanceType":"m5.xlarge","Name":"Master - 1"}]' \
---custom-ami-id ami-YOUR_AMI \
+--custom-ami-id ami-*YOUR_AMI* \
 --auto-scaling-role EMR_AutoScaling_DefaultRole \
 --ebs-root-volume-size 16 \
 --service-role EMR_DefaultRole \
@@ -143,7 +143,7 @@ aws emr create-cluster \
 --repo-upgrade-on-boot SECURITY \
 --name 'PFE POC' \
 --scale-down-behavior TERMINATE_AT_TASK_COMPLETION \
---region YOUR_REGION
+--region *YOUR_REGION*
 
 </pre></code>
 
@@ -478,8 +478,6 @@ After the spark job completes, it will create an "output" folder in your s3 buck
 <pre><code>
 
 # Adjust environment variables as needed
-# LD_LIBRARY_PATH=/usr/local/lib
-# export LD_LIBRARY_PATH=$LD_LIBRARY_PATH
 export PYSPARK_DRIVER_PYTHON=/usr/bin/python3
 export PYSPARK_PYTHON=python3
 export PYTHONPATH=/usr/bin/python3
@@ -503,12 +501,12 @@ sudo spark-submit \
 --executor-cores 16 \
 --driver-cores 4 \
 --conf spark.default.parallelism=168 \
-s3://pfe2020/1504_PFE_CALC.py 5000 48 0.376739 0.0209835 \
-s3://pfe2020/1504_USD_LIB_SWAP_CURVE.csv \
-s3://pfe2020/1504_EUR_LIB_SWAP_CURVE.csv \
-s3://pfe2020/1504_USD3MTD156N.csv \
-s3://pfe2020/1504_INSTRUMENTS.csv \
-s3://pfe2020/output0105
+s3://*YOUR_S3*/1504_PFE_CALC.py 5000 48 0.376739 0.0209835 \
+s3://*YOUR_S3*/1504_USD_LIB_SWAP_CURVE.csv \
+s3://*YOUR_S3*/1504_EUR_LIB_SWAP_CURVE.csv \
+s3://*YOUR_S3*/1504_USD3MTD156N.csv \
+s3://*YOUR_S3*/1504_INSTRUMENTS.csv \
+s3://*YOUR_S3*/output0105
 
 </pre></code>
 
