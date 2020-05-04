@@ -492,7 +492,7 @@ Note: this cluster design has not been optimised and is one of the areas I'd lik
 
 Change the destination in the 1504_POC_PLOT.py to your s3 bucket and run it (e.g. via bash, notebook, ipython terminal). Once we have the time grid and NPV cube in memory,  this script will visualise the simulated exposure paths. The Blue paths are for Collateralised exposures and Red are for Uncollateralised.
 
-The progran will output something like this:
+The program will output something like this:
 
 * Maximum Uncollateralised PFE @95: $895,831
 * Maximum Collateralised PFE @95:$778,937
