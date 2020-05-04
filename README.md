@@ -112,7 +112,7 @@ ssh into the box using your local PEM file and the specific machine address. e.g
 Run the 1504_PFE_INSTALL_PACKAGES.sh script by downloading it:
 
 <pre><code> 
-wget https://raw.githubusercontent.com/fordesmith/PotentialFutureExposureAWSSpark/master/1304instpack_pip.sh
+wget https://raw.githubusercontent.com/fordesmith/PotentialFutureExposureAWSSpark/master/1504_PFE_INSTALL_PACKAGES.sh
 sudo bash ./1504_PFE_INSTALL_PACKAGES.sh
 </pre></code>
 
