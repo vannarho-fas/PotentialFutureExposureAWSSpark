@@ -146,7 +146,7 @@ aws emr create-cluster \
 --ec2-attributes '{"KeyName":"pfeAMI","InstanceProfile":"EMR_EC2_DefaultRole","SubnetId":"subnet-1aa9dc43","EmrManagedSlaveSecurityGroup":"sg-08f83f2680c4721b9","EmrManagedMasterSecurityGroup":"sg-0f4a0166888d51211"}' \
 --release-label emr-6.0.0 \
 --log-uri 's3n://aws-logs-952436753265-ap-southeast-2/elasticmapreduce/' \
---instance-groups '[{"InstanceCount":4,"EbsConfiguration":{"EbsBlockDeviceConfigs":[{"VolumeSpecification":{"SizeInGB":64,"VolumeType":"gp2"},"VolumesPerInstance":4}]},"InstanceGroupType":"CORE","InstanceType":"m5a.4xlarge","Name":"Core - 2"},{"InstanceCount":1,"EbsConfiguration":{"EbsBlockDeviceConfigs":[{"VolumeSpecification":{"SizeInGB":32,"VolumeType":"gp2"},"VolumesPerInstance":2}]},"InstanceGroupType":"MASTER","InstanceType":"m5.xlarge","Name":"Master - 1"}]' \
+--instance-groups '[{"InstanceCount":4,"EbsConfiguration":{"EbsBlockDeviceConfigs":[{"VolumeSpecification":{"SizeInGB":64,"VolumeType":"gp2"},"VolumesPerInstance":4}]},"InstanceGroupType":"CORE","InstanceType":"m5a.4xlarge","Name":"Core - 10"},{"InstanceCount":1,"EbsConfiguration":{"EbsBlockDeviceConfigs":[{"VolumeSpecification":{"SizeInGB":32,"VolumeType":"gp2"},"VolumesPerInstance":2}]},"InstanceGroupType":"MASTER","InstanceType":"m5.xlarge","Name":"Master - 1"}]' \
 --custom-ami-id ami-005c22d6ce5ca06ce \
 --auto-scaling-role EMR_AutoScaling_DefaultRole \
 --ebs-root-volume-size 16 \
@@ -489,7 +489,7 @@ sudo spark-submit \
 --master yarn \
 --conf spark.driver.extraLibraryPath="${LD_LIBRARY_PATH}" \
 --conf spark.executorEnv.LD_LIBRARY_PATH="${LD_LIBRARY_PATH}"  \
---num-executors 2 \
+--num-executors 10 \
 --conf spark.executor.memoryOverhead=5G \
 --executor-memory 50G \
 --conf spark.driver.memoryOverhead=2G \
