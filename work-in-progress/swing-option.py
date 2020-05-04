@@ -45,15 +45,32 @@ def load_nymex_curve(nymex_curve_file):
 
 # Loads input swap specifications from input file into an RDD and then collects the results
 def load_swing_options(instruments_file):
-    swingO = sc.textFile(instruments_file) \
+    swing_option_data = sc.textFile(instruments_file) \
         .map(lambda line: line.split(",")) \
         .filter(lambda r: r[0] == 'SWING') \
-        .map(lambda line: (str(line[1]), str(line[2]), float(line[3]), float(line[4]), float(line[5]), float(line[6]), float(line[7]), float(line[8]), float(line[9]), float(line[10]), float(line[11]), float(line[12]), float(line[13]), float(line[14]), int(line[15]), int(line[16]), int(line[17]))).cache() \
+        .map(lambda line: (int(line[1]),
+                           str(line[2]),
+                           str(line[3]),
+                           float(line[4]),
+                           float(line[5]),
+                           float(line[6]),
+                           float(line[7]),
+                           float(line[8]),
+                           float(line[9]),
+                           float(line[10]),
+                           float(line[11]),
+                           float(line[12]),
+                           float(line[13]),
+                           float(line[14]),
+                           float(line[15]),
+                           int(line[16]),
+                           int(line[17]),
+                           int(line[17]))).cache() \
         .collect()
-    return swingO
+    return swing_option_data
 
 # write column headings
-def format_price(p, digits=2):
+def format_price(p, digits):
     fmt = "%%.%df" % digits
     return fmt % p
 
@@ -63,15 +80,16 @@ def format_rate(r, digits=2):
     return fmt % (r * 100)
 
 
-def report_out(Info, bS, kM, fmt):
+def report_out(Info, c_n, b_s, k_m, fmt):
     if fmt == "Price":
-        bS = format_price(bS)
-        kM = format_price(kM)
+        c_n = format_price(c_n,0)
+        b_s = format_price(b_s,2)
+        k_m = format_price(k_m,2)
     else:
-        bS = format_rate(bS)
-        kM = format_rate(kM)
+        print("invalid")
+        # develop rate & PFE later
 
-    print("%19s" % Info + " |" + " |".join(["%15s" % y for y in [bS, kM]]))
+    print("%19s" % Info + " |" + " |".join(["%14s" % y for y in [c_n, b_s, k_m]]))
 
 #Config
 conf = SparkConf().setAppName("swing-poc")
@@ -84,30 +102,31 @@ nymex_curve_dates = [ql.DateParser.parseFormatted(r, '%Y-%m-%d') for r in nymex_
 swing_options = load_swing_options('/Users/forsmith/Documents/PotentialFutureExposureAWSSpark/work-in-progress/instruments.csv')
 
 #set up printing
-headers = [" Black Scholes ", " Kluge Model "]
+headers = ["Counterparty", "Black Scholes", "Kluge Model"]
 print("")
-print("%19s" % "" + " |" + " |".join(["%10s" % y for y in headers]))
+print("%19s" % "" + " |" + " |".join(["%14s" % y for y in headers]))
 separator = " | "
-widths = [20, 12, 12]
-width = widths[0] + widths[1] + widths[2] + widths[2]
+widths = [20, 14, 14,14]
+width = widths[0] + widths[1] + widths[2] + widths[3]+ widths[3]
 rule = "-" * width
 dblrule = "=" * width
 tab = " " * 2
 
 # main loop through swing options in instruments for BS and KM pricing models
 for s in range(len(swing_options)):
+    counterparty_num = swing_options[s][0]
 # Black Scholes price
-    todays_date = str_to_qldate(swing_options[s][0])
+    todays_date = str_to_qldate(swing_options[s][1])
     ql.Settings.instance().evaluationDate = todays_date
     settlement_date = todays_date
-    ex_date = str_to_qldate(swing_options[s][1])
-    volume_gas = swing_options[s][2]
-    r_fr = swing_options[s][4]
+    ex_date = str_to_qldate(swing_options[s][2])
+    volume_gas = swing_options[s][3]
+    r_fr = swing_options[s][5]
     risk_free_rate = ql.FlatForward(settlement_date, r_fr, ql.Actual365Fixed())
-    div_yield =  swing_options[s][5]
+    div_yield =  swing_options[s][6]
     dividend_yield = ql.FlatForward(settlement_date,div_yield, ql.Actual365Fixed())
     underlying = ql.SimpleQuote(swing_options[s][4]) #nymex spot price
-    vol_bs = swing_options[s][6]
+    vol_bs = swing_options[s][7]
     volatility_bs = ql.BlackConstantVol(todays_date, ql.TARGET(), vol_bs, ql.Actual365Fixed())
 
     exercise_dates = [ex_date + i for i in range(60)]
@@ -127,16 +146,16 @@ for s in range(len(swing_options)):
     bs_price = swing_option_object.NPV()
 
 # Kluge Model Price
-    x0 = swing_options[s][7] #0.08
-    x1 = swing_options[s][8] #0.08
-    beta = swing_options[s][9] #market risk 6
-    eta = swing_options[s][10] #theta 5
-    jump_intensity = swing_options[s][11] #2.5
-    speed = swing_options[s][12] #kappa 1
-    volatility_km = swing_options[s][13] #sigma 0.2
-    grid_t = swing_options[s][14]
-    grid_x = swing_options[s][15]
-    grid_y = swing_options[s][16]
+    x0 = swing_options[s][8] #0.08
+    x1 = swing_options[s][9] #0.08
+    beta = swing_options[s][10] #market risk 6
+    eta = swing_options[s][11] #theta 5
+    jump_intensity = swing_options[s][12] #2.5
+    speed = swing_options[s][13] #kappa 1
+    volatility_km = swing_options[s][14] #sigma 0.2
+    grid_t = swing_options[s][15]
+    grid_x = swing_options[s][16]
+    grid_y = swing_options[s][17]
 
     curve_shape = []
     for d in exercise_dates:
@@ -156,6 +175,6 @@ for s in range(len(swing_options)):
     km_price = swing_option_object.NPV()
     # print price outputs
     print(rule)
-    report_out("Swing Option " + str(s + 1), bs_price ,km_price , "Price")
+    report_out("Swing Option " + str(s + 1), counterparty_num, bs_price ,km_price , "Price")
 
 print(rule)
