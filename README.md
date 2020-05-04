@@ -520,11 +520,7 @@ The progran will output something like this:
 
 ## Planned steps to extend the POC
 
-* Add more derivative types e.g. 
-
-** Credit default swap maturing in 10 years 
-** Swing option NYMEX gas for a time period starting in 6 months and ending in 12 months 
-
+* Add more OTC derivative types e.g. Swing option for NYMEX gas forward for a time period starting in 6 months and ending in 12 months, credit default swap maturing in 10 years 
 * Extend to and create reports for different counterparties
 * Tune the spark cluster so it performs faster
 * Develop an API to enable the job to be triggerred externally
