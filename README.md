@@ -163,7 +163,8 @@ A spark cluster has n nodes managed by a central master. This allows it offer la
 
 ![Spark Cluster Diagram](https://raw.githubusercontent.com/fordesmith/PotentialFutureExposureAWSSpark/master/visualisations/cluster-overview.png).
 
-For the example here, the job completes in ~1 minute with 14 workers and ~2 minutes with 4 workers. In the first few runs the core NPV was only running on one node and the job took 30 minutes and as a result didn`t speed up when adding up to 30 worker nodes. I tweaked the python code to ensure it spread work across the cluster, but apart from that, I haven`t optimised the job, so you may be able to make it run faster. 
+
+For the example here, the job completes in ~1 minute with 14 workers and ~2 minutes with 4 workers. In the first few runs the core NPV was only running on one node and the job took 30 minutes (and as a result woud not speed up when adding further worker nodes). I tweaked the code to ensure the monte carlo simulations spread work across the cluster. Apart from that, I have not optimised the job, so you may be able to make it run faster. 
 
 ## Creating the input files
 
