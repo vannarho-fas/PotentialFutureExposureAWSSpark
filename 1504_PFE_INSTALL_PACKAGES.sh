@@ -4,7 +4,6 @@
 
 #!/bin/bash -xe
 
-
 # ----------------------------------------------------------------------
 #              Install Dev Tools        
 # ----------------------------------------------------------------------
@@ -39,7 +38,7 @@ pip3 install PyLaTeX
 pip3 install latexpages
 
 
-# install
+# install QL
 
 echo "Install QuantLib"
 pip3 install QuantLib-Python
