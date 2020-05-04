@@ -98,7 +98,7 @@ widths = [20, 12, 12]
 width = widths[0] + widths[1] + widths[2] + widths[2]
 rule = "-" * width
 dblrule = "=" * width
-tab = " " * 1
+tab = " " * 2
 
 # main loop through swing options in instruments for BS and KM pricing models
 for s in range(len(swingOpts)):
