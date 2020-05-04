@@ -132,10 +132,7 @@ for s in range(len(swingOpts)):
     swingOption.setPricingEngine(ql.FdSimpleBSSwingEngine(bsProcess))
     bs_price = swingOption.NPV()
 
-    # print("Swing Option " + str(s+1) + " - Black Scholes Price: %f" % swingOption.NPV())
-
 # Kluge Model Price
-
     x0 = swingOpts[s][7] #0.08
     x1 = swingOpts[s][8] #0.08
     beta = swingOpts[s][9] #market risk 6
@@ -163,8 +160,7 @@ for s in range(len(swingOpts)):
     swingOption.setPricingEngine(ql.FdSimpleExtOUJumpSwingEngine(jProcess, riskFreeRate, gridT, gridX, gridY, curveShape))
 
     km_price = swingOption.NPV()
-
-   # print("Swing Option " + str(s+1) + " - Kluge Model Price  : %f" % swingOption.NPV())
+    # print price outputs
     print(rule)
     report_out("Swing Option " + str(s + 1), bs_price ,km_price , "Price")
 
