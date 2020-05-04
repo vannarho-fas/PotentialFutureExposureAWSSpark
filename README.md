@@ -109,7 +109,7 @@ Once you're connect to the instance, you'll install the base software required.
 
 ssh into the box using your local PEM file and the specific machine address. e.g. `ssh -i /Users/XX/XX.pem ec2-user@ec2-XX-XX-XXX-XXX.ap-southeast-2.compute.amazonaws.com`. 
 
-Run the 1504_PFE_INSTALL_PACKAGES.sh script by downloading it:
+Run the 1504_PFE_INSTALL_PACKAGES.sh script by downloading it: e.g.
 
 <pre><code> 
 wget https://raw.githubusercontent.com/fordesmith/PotentialFutureExposureAWSSpark/master/1504_PFE_INSTALL_PACKAGES.sh
@@ -128,13 +128,14 @@ This assumes you've set up the AWS CLI.
 
 <pre><code>
 
+
 aws emr create-cluster \
 --applications Name=Hadoop Name=Hive Name=Hue Name=Spark Name=Zeppelin \
---ec2-attributes '{"KeyName":"<!YOUR_KEY!>","InstanceProfile":"EMR_EC2_DefaultRole","SubnetId":"subnet-1aa9dc43","EmrManagedSlaveSecurityGroup":"sg-08f83f2680c4721b9","EmrManagedMasterSecurityGroup":"sg-0f4a0166888d51211"}' \
+--ec2-attributes '{"KeyName":"<YOUR_KEY>","InstanceProfile":"EMR_EC2_DefaultRole","SubnetId":"subnet-1aa9dc43","EmrManagedSlaveSecurityGroup":"sg-08f83f2680c4721b9","EmrManagedMasterSecurityGroup":"sg-0f4a0166888d51211"}' \
 --release-label emr-6.0.0 \
---log-uri 's3n://aws-logs-<!YOUR_LOG!>-<!YOUR_REGION!>/elasticmapreduce/' \
+--log-uri 's3n://aws-logs-<YOUR_LOG>-<YOUR_REGION>/elasticmapreduce/' \
 --instance-groups '[{"InstanceCount":4,"EbsConfiguration":{"EbsBlockDeviceConfigs":[{"VolumeSpecification":{"SizeInGB":64,"VolumeType":"gp2"},"VolumesPerInstance":4}]},"InstanceGroupType":"CORE","InstanceType":"m5a.4xlarge","Name":"Core - 10"},{"InstanceCount":1,"EbsConfiguration":{"EbsBlockDeviceConfigs":[{"VolumeSpecification":{"SizeInGB":32,"VolumeType":"gp2"},"VolumesPerInstance":2}]},"InstanceGroupType":"MASTER","InstanceType":"m5.xlarge","Name":"Master - 1"}]' \
---custom-ami-id ami-<!YOUR_AMI!> \
+--custom-ami-id ami-<YOUR_AMI> \
 --auto-scaling-role EMR_AutoScaling_DefaultRole \
 --ebs-root-volume-size 16 \
 --service-role EMR_DefaultRole \
@@ -142,7 +143,7 @@ aws emr create-cluster \
 --repo-upgrade-on-boot SECURITY \
 --name 'PFE POC' \
 --scale-down-behavior TERMINATE_AT_TASK_COMPLETION \
---region <!YOUR_REGION!>
+--region <YOUR_REGION>
 
 </pre></code>
 
