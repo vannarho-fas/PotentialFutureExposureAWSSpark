@@ -1,5 +1,5 @@
 # A proof of concept that calculates potential future exposure
-# for a set of different OTC derivatives
+# for a small set of  OTC derivatives
 # using Quantlib, Spark and Amazon EMR
 
 
@@ -10,7 +10,6 @@ import datetime as dt
 import numpy as np
 import math
 import sys
-from boto3.session import Session
 
 
 # Used in loading the various input text files
@@ -49,7 +48,12 @@ def load_irs_swaps(instruments_file):
     swaps = sc.textFile(instruments_file) \
         .map(lambda line: line.split(",")) \
         .filter(lambda r: r[0] == 'IRS') \
-        .map(lambda line: (str(line[1]), str(line[2]), float(line[3]), float(line[4]), str(line[5]))) \
+        .map(lambda line: (int(line[1]),
+                           str(line[2]),
+                           str(line[3]),
+                           float(line[4]),
+                           float(line[5]),
+                           str(line[6]))) \
         .collect()
     return swaps
 
@@ -59,7 +63,13 @@ def load_fxfwds(instruments_file):
     fxfwds = sc.textFile(instruments_file) \
         .map(lambda line: line.split(",")) \
         .filter(lambda r: r[0] == 'FXFWD') \
-        .map(lambda line: (str(line[1]), str(line[2]), float(line[3]), float(line[4]), str(line[5]), str(line[6]))) \
+        .map(lambda line: (int(line[1]),
+                           str(line[2]),
+                           str(line[3]),
+                           float(line[4]),
+                           float(line[5]),
+                           str(line[6]),
+                           str(line[7]))) \
         .collect()
     return fxfwds
 
@@ -160,16 +170,17 @@ def main(sc, args_dict):
     broadcast_dict['fixings'] = latestFixings
     swaps = load_irs_swaps(instruments_file)
     broadcast_dict['swaps'] = swaps
+    print(swaps)
     fxfwds = load_fxfwds(instruments_file)
     broadcast_dict['fxfwds'] = fxfwds
 
     swaps = [
-        create_quantlib_swap_object(today, ql.DateParser.parseFormatted(swap[0], '%Y-%m-%d'),
-                                    ql.Period(swap[1]), swap[2], swap[3], usdlibor3m,
-                                    ql.VanillaSwap.Payer if swap[4] == 'Payer' else ql.VanillaSwap.Receiver)
+        create_quantlib_swap_object(today, ql.DateParser.parseFormatted(swap[1], '%Y-%m-%d'),
+                                    ql.Period(swap[2]), swap[3], swap[4], usdlibor3m,
+                                    ql.VanillaSwap.Payer if swap[5] == 'Payer' else ql.VanillaSwap.Receiver)
         for swap in swaps
     ]
-
+    print(swaps)
     longest_swap_maturity = max([s[0].maturityDate() for s in swaps])
     broadcast_dict['longest_swap_maturity'] = quantlib_date_to_datetime(longest_swap_maturity)
 
@@ -258,19 +269,21 @@ def calculate_potential_future_exposure(random_numbers, time_grid, br_dict):
     usdlibor3m.addFixings(fixing_dates, fixings)
     engine = ql.DiscountingSwapEngine(usd_disc_term_structure)
     swaps = broadcast_dict['swaps']
+    cp_num = [x[0] for x in swaps]
+
     swaps = [
-        create_quantlib_swap_object(today, ql.DateParser.parseFormatted(swap[0], '%Y-%m-%d'),
-                                    ql.Period(swap[1]), swap[2], swap[3], usdlibor3m,
-                                    ql.VanillaSwap.Payer if swap[4] == 'Payer' else ql.VanillaSwap.Receiver)
+        create_quantlib_swap_object(today, ql.DateParser.parseFormatted(swap[1], '%Y-%m-%d'),
+                                    ql.Period(swap[2]), swap[3], swap[4], usdlibor3m,
+                                    ql.VanillaSwap.Payer if swap[5] == 'Payer' else ql.VanillaSwap.Receiver)
         for swap in swaps
     ]
 
     # There is only one fxfwd in the instruments file for this limited POC
     fxfwds = broadcast_dict['fxfwds']
-    fx_startdate = ql.DateParser.parseFormatted(fxfwds[0][0], '%Y-%m-%d')
-    fx_tenor = ql.Period(fxfwds[0][1])
-    fx_notional = fxfwds[0][2]
-    fwd_rate = fxfwds[0][3]
+    fx_startdate = ql.DateParser.parseFormatted(fxfwds[0][1], '%Y-%m-%d')
+    fx_tenor = ql.Period(fxfwds[0][2])
+    fx_notional = fxfwds[0][3]
+    fwd_rate = fxfwds[0][4]
     fx_maturity = usd_calendar.advance(fx_startdate, fx_tenor, ql.Following)
 
     # define the NPV cube array
