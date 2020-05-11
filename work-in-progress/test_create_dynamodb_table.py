@@ -78,7 +78,6 @@ print("Table status:", npv_table.table_status)
 
 a = rand.randrange(0, 5)
 b = rand.randrange(0, 5)
-# ID = rand.randrange(0, 1000) * rand.randrange(0, 1000) / rand.randrange(10, 100)
 ID = 1
 date = "01-05-2020"
 counterparty = 111
