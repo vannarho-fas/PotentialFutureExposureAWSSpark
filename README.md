@@ -237,11 +237,12 @@ def load_fxfwds(instruments_file):
         .collect()
     return fxfwds
 </pre></code>
-    
-** Daily Libor rates are 3M USD Libor rates for previous years
-** Swap specifications: commencement date, term, amount, fixed rate, type (pay, receive)
-** FxFwd specifications: commencement date, term, amount, rate, currency 1, currency 2
-** Load USD, EUR libor swap curve from input file
+ 
+ Note:
+* Daily Libor rates are 3M USD Libor rates for previous years
+* Swap specifications: commencement date, term, amount, fixed rate, type (pay, receive)
+* FxFwd specifications: commencement date, term, amount, rate, currency 1, currency 2
+* Load USD, EUR libor swap curve from input file
 
 
 #### Build a QuantLib swap and index object
@@ -504,11 +505,12 @@ The program will output something like this:
 ![Potential Future Exposure - Collatoralised & Uncollateralised](https://raw.githubusercontent.com/fordesmith/PotentialFutureExposureAWSSpark/master/visualisations/pfe.png).
 
 
-## Planned steps to extend the POC
+## Some ideas for ways to extend the POC
 
 * Add more OTC derivative types e.g. Swing option for NYMEX gas forward for a time period starting in 6 months and ending in 12 months, credit default swap maturing in 10 years 
 * Extend to and create reports for different counterparties
-* Tune the spark cluster so it performs faster
-* Develop an API to enable the job to be triggered externally
+* Add database support to record the results of the PFE calculations for different counterparties (e.g. Cassandra)
+* Test larger numbers of products to simulate more real-life batch jobs
+* Develop an API to enable the jobs to be triggered externally
 
 
