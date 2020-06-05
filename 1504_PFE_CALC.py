@@ -218,8 +218,8 @@ def main(sc, args_dict):
 
 
     # swaps = load_irs_swaps(instruments_file)
-    swaps_file = load_counterparty_irs_swaps(instruments_file, 111)  # testing manually
-    broadcast_dict['swaps'] = swaps_file
+    swaps_list = load_counterparty_irs_swaps(instruments_file, 111)  # testing manually
+    broadcast_dict['swaps'] = swaps_list
 
     fxfwds = load_counterparty_fxfwds(instruments_file,111)
     broadcast_dict['fxfwds'] = fxfwds
@@ -228,7 +228,7 @@ def main(sc, args_dict):
         create_quantlib_swap_object(today, ql.DateParser.parseFormatted(swap[1], '%Y-%m-%d'),
                                     ql.Period(swap[2]), swap[3], swap[4], usdlibor3m,
                                     ql.VanillaSwap.Payer if swap[5] == 'Payer' else ql.VanillaSwap.Receiver)
-        for swap in swaps_file
+        for swap in swaps_list
     ]
 
     longest_swap_maturity = max([s[0].maturityDate() for s in swaps])
@@ -318,14 +318,14 @@ def calculate_potential_future_exposure(random_numbers, time_grid, br_dict):
     usdlibor3m = ql.USDLibor(ql.Period(3, ql.Months), usd_disc_term_structure)
     usdlibor3m.addFixings(fixing_dates, fixings)
     engine = ql.DiscountingSwapEngine(usd_disc_term_structure)
-    swaps = broadcast_dict['swaps']
-    cp_num = [x[0] for x in swaps]
+    swaps_list = broadcast_dict['swaps']
+    cp_num = [x[0] for x in swaps_list]
 
     swaps = [
         create_quantlib_swap_object(today, ql.DateParser.parseFormatted(swap[1], '%Y-%m-%d'),
                                     ql.Period(swap[2]), swap[3], swap[4], usdlibor3m,
                                     ql.VanillaSwap.Payer if swap[5] == 'Payer' else ql.VanillaSwap.Receiver)
-        for swap in swaps
+        for swap in swaps_list
     ]
 
     # There is only one fxfwd in the instruments file for this limited POC
