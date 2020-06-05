@@ -53,19 +53,6 @@ def load_counterparties(instruments_file):
         .collect()
     return sorted(cps)
 
-# Loads input swap specifications from input file into an RDD and then collects the results
-def load_irs_swaps(instruments_file):
-    swaps = sc.textFile(instruments_file) \
-        .map(lambda line: line.split(",")) \
-        .filter(lambda r: r[0] == 'IRS') \
-        .map(lambda line: (int(line[1]),
-                           str(line[2]),
-                           str(line[3]),
-                           float(line[4]),
-                           float(line[5]),
-                           str(line[6]))) \
-        .collect()
-    return swaps
 
 # new version - Loads counterparty input swap specifications from input file into an RDD and then collects the results
 def load_counterparty_irs_swaps(instruments_file, counterparty):
@@ -83,21 +70,6 @@ def load_counterparty_irs_swaps(instruments_file, counterparty):
     return cp_swaps
 
 
-
-# Loads input FxFwd specifications from input file into an RDD and then collects the results
-def load_fxfwds(instruments_file):
-    fxfwds = sc.textFile(instruments_file) \
-        .map(lambda line: line.split(",")) \
-        .filter(lambda r: r[0] == 'FXFWD') \
-        .map(lambda line: (int(line[1]),
-                           str(line[2]),
-                           str(line[3]),
-                           float(line[4]),
-                           float(line[5]),
-                           str(line[6]),
-                           str(line[7]))) \
-        .collect()
-    return fxfwds
 
 
 # new version - Loads counterparty FxFwd specifications from input file into an RDD and then collects the results
