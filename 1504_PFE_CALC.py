@@ -188,67 +188,67 @@ def main(sc, args_dict):
     counterparties = load_counterparties(instruments_file)
     broadcast_dict['counterparties'] = counterparties
 
+    for counterparty in counterparties:
 
-    # swaps = load_irs_swaps(instruments_file)
-    swaps_list = load_counterparty_irs_swaps(instruments_file, 113)  # testing manually
-    broadcast_dict['swaps'] = swaps_list
+        swaps_list = load_counterparty_irs_swaps(instruments_file, counterparty)
+        broadcast_dict['swaps'] = swaps_list
 
-    fxfwds = load_counterparty_fxfwds(instruments_file,113)
-    broadcast_dict['fxfwds'] = fxfwds
+        fxfwds = load_counterparty_fxfwds(instruments_file,counterparty)
+        broadcast_dict['fxfwds'] = fxfwds
 
-    swaps = [
-        create_quantlib_swap_object(today, ql.DateParser.parseFormatted(swap[1], '%Y-%m-%d'),
+        swaps = [
+            create_quantlib_swap_object(today, ql.DateParser.parseFormatted(swap[1], '%Y-%m-%d'),
                                     ql.Period(swap[2]), swap[3], swap[4], usdlibor3m,
                                     ql.VanillaSwap.Payer if swap[5] == 'Payer' else ql.VanillaSwap.Receiver)
-        for swap in swaps_list
-    ]
+            for swap in swaps_list
+        ]
 
-    longest_swap_maturity = max([s[0].maturityDate() for s in swaps])
-    broadcast_dict['longest_swap_maturity'] = quantlib_date_to_datetime(longest_swap_maturity)
+        longest_swap_maturity = max([s[0].maturityDate() for s in swaps])
+        broadcast_dict['longest_swap_maturity'] = quantlib_date_to_datetime(longest_swap_maturity)
 
-    Nsim = int(args_dict['NSim'])
-    NPartitions = int(args_dict['NPartitions'])
-    a = float(args_dict['a'])  # 0.376739
-    sigma = float(args_dict['sigma'])  # 0.0209835
-    broadcast_dict['a'] = a
-    broadcast_dict['sigma'] = sigma
+        Nsim = int(args_dict['NSim'])
+
+        a = float(args_dict['a'])  # 0.376739
+        sigma = float(args_dict['sigma'])  # 0.0209835
+        broadcast_dict['a'] = a
+        broadcast_dict['sigma'] = sigma
 
     # Simulate swap NPVs until we reach the longest maturity
-    years_to_sim = math.ceil(ql.Actual360().yearFraction(today, longest_swap_maturity))
-    dates = [today + ql.Period(i, ql.Weeks) for i in range(0, 52 * int(years_to_sim))]
+        years_to_sim = math.ceil(ql.Actual360().yearFraction(today, longest_swap_maturity))
+        dates = [today + ql.Period(i, ql.Weeks) for i in range(0, 52 * int(years_to_sim))]
 
     # Ad swap reset dates to our universe of dates
-    for idx in range(len(swaps)):
-        dates += swaps[idx][1]
-    dates = np.unique(np.sort(dates))
-    broadcast_dict['dates'] = [quantlib_date_to_datetime(x) for x in dates]
-    br_dict = sc.broadcast(broadcast_dict)
+        for idx in range(len(swaps)):
+            dates += swaps[idx][1]
+        dates = np.unique(np.sort(dates))
+        broadcast_dict['dates'] = [quantlib_date_to_datetime(x) for x in dates]
+        br_dict = sc.broadcast(broadcast_dict)
 
     # Write out the time grid to a text file which can be parsed later
-    T = [ql.Actual360().yearFraction(today, dates[i]) for i in range(1, len(dates))]
-    temp_rdd = sc.parallelize(T)
+        T = [ql.Actual360().yearFraction(today, dates[i]) for i in range(1, len(dates))]
+        temp_rdd = sc.parallelize(T)
 
     # coalesce with shrink the partition size to 1 so we have only 1 file to write and parse later
-    temp_rdd.coalesce(1).saveAsTextFile(output_dir + '/time_curve')
+        temp_rdd.coalesce(1).saveAsTextFile(output_dir + '/time_curve/' + str(counterparty))
 
     # The main routine, generate a matrix of normally distributed random numbers and
     # spread them across the cluster
 
-    random_array_rdd = RandomRDDs.normalVectorRDD(sc, Nsim, len(T), seed=1)
+        random_array_rdd = RandomRDDs.normalVectorRDD(sc, Nsim, len(T), seed=1)
 
     # for each row of the matrix, which corresponds to one simulated path,
     # compute netting set NPV (collateralised and uncollateralised)
 
-    npv_list = random_array_rdd.map(lambda p: (calculate_potential_future_exposure(p, T, br_dict))).collect()
+        npv_list = random_array_rdd.map(lambda p: (calculate_potential_future_exposure(p, T, br_dict))).collect()
 
     # convert list to dataframe
 
-    npv_dataframe = sc.parallelize(npv_list)
+        npv_dataframe = sc.parallelize(npv_list)
 
     # write out the npv cube - next step beyond this is to clean up the raw data file,
     # calculate the exposure then create the visualisations
 
-    npv_dataframe.coalesce(1).saveAsTextFile(output_dir + '/exposure_scenarios')
+        npv_dataframe.coalesce(1).saveAsTextFile(output_dir + '/exposure_scenarios/' + str(counterparty))
 
 
 def calculate_potential_future_exposure(random_numbers, time_grid, br_dict):
