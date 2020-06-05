@@ -56,6 +56,7 @@ pip3 install matplotlib
 pip3 install boto3
 pip3 install cairocffi
 pip3 install pytables
+pip3 install cassandra-driver
 
 # ----------------------------------------------------------------------
 #                        Environment vars          
