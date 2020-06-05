@@ -218,10 +218,10 @@ def main(sc, args_dict):
 
 
     # swaps = load_irs_swaps(instruments_file)
-    swaps_list = load_counterparty_irs_swaps(instruments_file, 111)  # testing manually
+    swaps_list = load_counterparty_irs_swaps(instruments_file, 113)  # testing manually
     broadcast_dict['swaps'] = swaps_list
 
-    fxfwds = load_counterparty_fxfwds(instruments_file,111)
+    fxfwds = load_counterparty_fxfwds(instruments_file,113)
     broadcast_dict['fxfwds'] = fxfwds
 
     swaps = [
