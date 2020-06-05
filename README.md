@@ -167,7 +167,7 @@ A spark cluster has n nodes managed by a central master. This allows it offer la
 ![Spark Cluster Diagram](https://raw.githubusercontent.com/fordesmith/PotentialFutureExposureAWSSpark/master/visualisations/cluster-overview.png).
 
 
-For the example here, the job completes in ~1 minute with 14 workers and ~2 minutes with 4 workers. It computes a netting set NPV for 5000 simulations across 454 future dates for 2 swaps and 1 FxFwd.  In the first few iterations the core NPV was only running on one node and the job took 30 minutes (and as a result woud not speed up when adding further worker nodes). I tweaked the code to ensure the monte carlo simulations spread work across the cluster. Apart from that, I have not optimised the job, so you may be able to make it run faster and better. 
+For the example here, the job completes in ~1.4 minute with 11 workers and ~3.4 minutes with 4 workers. It computes a netting set NPV for 5000 simulations across 454 future dates for three counterparties each with 2-3 swaps and 1 FxFwd. I have not optimised the job, so you may be able to make it run faster and better. 
 
 ## Creating the input files
 
@@ -211,6 +211,7 @@ import sys
 #### Load historical libor rates, swap specifications and FxFwd specifications from input file into an RDD and collect the results
 
 <pre><code>
+# Loads libor fixings from input file into an RDD and then collects the results
 def load_libor_fixings(libor_fixings_file):
     libor_fixings = sc.textFile(libor_fixings_file) \
         .map(lambda line: line.split(",")) \
@@ -221,21 +222,52 @@ def load_libor_fixings(libor_fixings_file):
     fixings = libor_fixings.map(lambda r: r[1]).collect()
     return fixing_dates, fixings
 
-def load_irs_swaps(instruments_file):
-    swaps = sc.textFile(instruments_file) \
+
+def load_counterparties(instruments_file):
+    cps = sc.textFile(instruments_file) \
+        .map(lambda line: line.split(",")) \
+        .filter(lambda r: value_is_number(r[1])) \
+        .filter(lambda r: (int(r[1])>0)) \
+        .map(lambda line: (int(line[1]))) \
+        .distinct() \
+        .collect()
+    return sorted(cps)
+
+
+# new version - Loads counterparty input swap specifications from input file into an RDD and then collects the results
+def load_counterparty_irs_swaps(instruments_file, counterparty):
+    cp_swaps = sc.textFile(instruments_file) \
         .map(lambda line: line.split(",")) \
         .filter(lambda r: r[0] == 'IRS') \
-        .map(lambda line: (str(line[1]), str(line[2]), float(line[3]), float(line[4]), str(line[5]))) \
+        .filter(lambda r: r[1] == str(counterparty)) \
+        .map(lambda line: (int(line[1]), # counterparty number
+                           str(line[2]),
+                           str(line[3]),
+                           float(line[4]),
+                           float(line[5]),
+                           str(line[6]))) \
         .collect()
-    return swaps
+    return cp_swaps
 
-def load_fxfwds(instruments_file):
-    fxfwds = sc.textFile(instruments_file) \
+
+
+
+# new version - Loads counterparty FxFwd specifications from input file into an RDD and then collects the results
+def load_counterparty_fxfwds(instruments_file,counterparty):
+    cp_fxfwds = sc.textFile(instruments_file) \
         .map(lambda line: line.split(",")) \
         .filter(lambda r: r[0] == 'FXFWD') \
-        .map(lambda line: (str(line[1]), str(line[2]), float(line[3]), float(line[4]), str(line[5]), str(line[6]))) \
+        .filter(lambda r: r[1] == str(counterparty)) \
+        .map(lambda line: (int(line[1]),  # counterparty number
+                           str(line[2]),
+                           str(line[3]),
+                           float(line[4]),
+                           float(line[5]),
+                           str(line[6]),
+                           str(line[7]))) \
         .collect()
-    return fxfwds
+    return cp_fxfwds
+
 </pre></code>
  
  Note:
@@ -283,32 +315,37 @@ def create_quantlib_swap_object(today, start, maturity, nominal, fixedRate, inde
     return swap, [index.fixingDate(x) for x in floatSchedule if index.fixingDate(x) >= today][:-1]
 </pre></code>
 
-#### Build QuantLib index object
+#### Loop calculations to create scenarios for each counterparty, build QuantLib index object
 
 <pre><code>
-    usdlibor3m = ql.USDLibor(ql.Period(3, ql.Months), usd_disc_term_structure)
-    fixing_dates, fixings = load_libor_fixings(libor_fixings_file)
-    fixing_dates = [ql.DateParser.parseFormatted(r, '%Y-%m-%d') for r in fixing_dates]
-    three_month_old_date = usd_calendar.advance(today, -90, ql.Days, ql.ModifiedFollowing)
-    latestfixing_dates = fixing_dates[fixing_dates.index(three_month_old_date):]
-    latestFixings = fixings[fixing_dates.index(three_month_old_date):]
-    usdlibor3m.addFixings(latestfixing_dates, latestFixings)
-    broadcast_dict['fixing_dates'] = [quantlib_date_to_datetime(x) for x in latestfixing_dates]
-    broadcast_dict['fixings'] = latestFixings
-    swaps = load_irs_swaps(instruments_file)
-    broadcast_dict['swaps'] = swaps
-    fxfwds = load_fxfwds(instruments_file)
-    broadcast_dict['fxfwds'] = fxfwds
+    # load counter parties
+    counterparties = load_counterparties(instruments_file)
+    broadcast_dict['counterparties'] = counterparties
 
-    swaps = [
-        create_quantlib_swap_object(today, ql.DateParser.parseFormatted(swap[0], '%Y-%m-%d'),
-                                    ql.Period(swap[1]), swap[2], swap[3], usdlibor3m,
-                                    ql.VanillaSwap.Payer if swap[4] == 'Payer' else ql.VanillaSwap.Receiver)
-        for swap in swaps
-    ]
+    for counterparty in counterparties:
 
-    longest_swap_maturity = max([s[0].maturityDate() for s in swaps])
-    broadcast_dict['longest_swap_maturity'] = quantlib_date_to_datetime(longest_swap_maturity)
+        swaps_list = load_counterparty_irs_swaps(instruments_file, counterparty)
+        broadcast_dict['swaps'] = swaps_list
+
+        fxfwds = load_counterparty_fxfwds(instruments_file,counterparty)
+        broadcast_dict['fxfwds'] = fxfwds
+
+        swaps = [
+            create_quantlib_swap_object(today, ql.DateParser.parseFormatted(swap[1], '%Y-%m-%d'),
+                                    ql.Period(swap[2]), swap[3], swap[4], usdlibor3m,
+                                    ql.VanillaSwap.Payer if swap[5] == 'Payer' else ql.VanillaSwap.Receiver)
+            for swap in swaps_list
+        ]
+
+        longest_swap_maturity = max([s[0].maturityDate() for s in swaps])
+        broadcast_dict['longest_swap_maturity'] = quantlib_date_to_datetime(longest_swap_maturity)
+
+        Nsim = int(args_dict['NSim'])
+
+        a = float(args_dict['a'])  # 0.376739
+        sigma = float(args_dict['sigma'])  # 0.0209835
+        broadcast_dict['a'] = a
+        broadcast_dict['sigma'] = sigma
  </pre></code>
     
 #### Generate a matrix of normally distributed random numbers and spread them across the cluster - used the default settings from Spark for the partitions. 
@@ -345,7 +382,7 @@ def create_quantlib_swap_object(today, start, maturity, nominal, fixedRate, inde
 </pre></code>
 
 
-#### Loop through dates and define NPVs (including Garman-Kohlagen process to build FX rate simulation for FxFwd)
+#### For each counterparty, loop through dates and define NPVs (including Garman-Kohlagen process to build FX rate simulation for FxFwd) netting off exposure
 
 <pre><code>
     for iT in range(1, len(time_grid)):
@@ -508,9 +545,9 @@ The program will output something like this:
 ## Some ideas for ways to extend the POC
 
 * Add more OTC derivative types e.g. Swing option for NYMEX gas forward for a time period starting in 6 months and ending in 12 months, credit default swap maturing in 10 years 
-* Extend to and create reports for different counterparties
-* Add database support to record the results of the PFE calculations for different counterparties (e.g. Cassandra)
+* Add database support to record the results of the PFE calculations for different counterparties (e.g. Cassandra - work in progress)
 * Test larger numbers of products to simulate more real-life batch jobs
 * Develop an API to enable the jobs to be triggered externally
+* Extend the instruments file (or move it to Cassandra) to include all input variables e.g. alpha and sigma for Hull White model, numbers of simulations
 
 
