@@ -14,9 +14,10 @@ session = Session(aws_access_key_id='AWS_ACCESS_KEY',
     aws_secret_access_key='AWS_SECRET_ACCESS_KEY')
 
 # Retrieve the files - CHANGE THE BUCKET NAME AND PATH AS NEEDED
+# latest POC has separate folders for each counterparty
 get3 = boto3.client('s3')
-get3.download_file('pfe2020', 'output1504/time-grid/part-00000', 'time_grid')
-get3.download_file('pfe2020', 'output1504/npv_cube/part-00000', 'npv_cube')
+get3.download_file('#bucket#', '#path_to_file#', 'time_grid')
+get3.download_file('#bucket#', '#path_to_file#', 'npv_cube')
 
 
 # Load the files into numpy arrays for analysis
@@ -67,7 +68,8 @@ plt.legend(loc='upper left')
 # added
 plt.savefig('epex.png')
 s3_client = boto3.resource('s3')
-response = s3_client.meta.client.upload_file('epex.png', 'pfe2020', 'epex.png')
+# set bucket name
+response = s3_client.meta.client.upload_file('epex.png', '#bucket#', 'epex.png')
 
 # Calculate and plot the PFE curve (95% quantile)
 uncoll_PFE_curve = np.percentile(uncoll_exposures, 95, axis=0, interpolation='higher')
@@ -82,7 +84,8 @@ plt.legend(loc='upper left')
 # added
 plt.savefig('pfe.png')
 s3_client = boto3.resource('s3')
-response = s3_client.meta.client.upload_file('pfe.png', 'pfe2020', 'pfe.png')
+# set bucket name
+response = s3_client.meta.client.upload_file('pfe.png', '#bucket#', 'pfe.png')
 
 # calculate the maximum pfe
 MPFE = np.max(uncoll_PFE_curve)
