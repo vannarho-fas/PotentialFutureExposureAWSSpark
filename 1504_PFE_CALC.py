@@ -43,6 +43,16 @@ def load_libor_fixings(libor_fixings_file):
     return fixing_dates, fixings
 
 
+def load_counterparties(instruments_file):
+    cps = sc.textFile(instruments_file) \
+        .map(lambda line: line.split(",")) \
+        .filter(lambda r: value_is_number(r[1])) \
+        .filter(lambda r: (int(r[1])>0)) \
+        .map(lambda line: (int(line[1]))) \
+        .distinct() \
+        .collect()
+    return sorted(cps)
+
 # Loads input swap specifications from input file into an RDD and then collects the results
 def load_irs_swaps(instruments_file):
     swaps = sc.textFile(instruments_file) \
@@ -56,6 +66,22 @@ def load_irs_swaps(instruments_file):
                            str(line[6]))) \
         .collect()
     return swaps
+
+# new version - Loads counterparty input swap specifications from input file into an RDD and then collects the results
+def load_counterparty_irs_swaps(instruments_file, counterparty):
+    cp_swaps = sc.textFile(instruments_file) \
+        .map(lambda line: line.split(",")) \
+        .filter(lambda r: r[0] == 'IRS') \
+        .filter(lambda r: r[1] == str(counterparty)) \
+        .map(lambda line: (int(line[1]), # counterparty number
+                           str(line[2]),
+                           str(line[3]),
+                           float(line[4]),
+                           float(line[5]),
+                           str(line[6]))) \
+        .collect()
+    return cp_swaps
+
 
 
 # Loads input FxFwd specifications from input file into an RDD and then collects the results
@@ -72,6 +98,23 @@ def load_fxfwds(instruments_file):
                            str(line[7]))) \
         .collect()
     return fxfwds
+
+
+# new version - Loads counterparty FxFwd specifications from input file into an RDD and then collects the results
+def load_counterparty_fxfwds(instruments_file,counterparty):
+    cp_fxfwds = sc.textFile(instruments_file) \
+        .map(lambda line: line.split(",")) \
+        .filter(lambda r: r[0] == 'FXFWD') \
+        .filter(lambda r: r[1] == str(counterparty)) \
+        .map(lambda line: (int(line[1]),  # counterparty number
+                           str(line[2]),
+                           str(line[3]),
+                           float(line[4]),
+                           float(line[5]),
+                           str(line[6]),
+                           str(line[7]))) \
+        .collect()
+    return cp_fxfwds
 
 
 # Builds a QuantLib swap object from given specification
@@ -168,6 +211,12 @@ def main(sc, args_dict):
     usdlibor3m.addFixings(latestfixing_dates, latestFixings)
     broadcast_dict['fixing_dates'] = [quantlib_date_to_datetime(x) for x in latestfixing_dates]
     broadcast_dict['fixings'] = latestFixings
+
+    # load counter parties
+    counterparties = load_counterparties(instruments_file)
+    broadcast_dict['counterparties'] = counterparties
+
+
     swaps = load_irs_swaps(instruments_file)
     broadcast_dict['swaps'] = swaps
     print(swaps)
