@@ -217,19 +217,20 @@ def main(sc, args_dict):
     broadcast_dict['counterparties'] = counterparties
 
 
-    swaps = load_irs_swaps(instruments_file)
-    broadcast_dict['swaps'] = swaps
-    print(swaps)
-    fxfwds = load_fxfwds(instruments_file)
+    # swaps = load_irs_swaps(instruments_file)
+    swaps_file = load_counterparty_irs_swaps(instruments_file, 111)  # testing manually
+    broadcast_dict['swaps'] = swaps_file
+
+    fxfwds = load_counterparty_fxfwds(instruments_file,111)
     broadcast_dict['fxfwds'] = fxfwds
 
     swaps = [
         create_quantlib_swap_object(today, ql.DateParser.parseFormatted(swap[1], '%Y-%m-%d'),
                                     ql.Period(swap[2]), swap[3], swap[4], usdlibor3m,
                                     ql.VanillaSwap.Payer if swap[5] == 'Payer' else ql.VanillaSwap.Receiver)
-        for swap in swaps
+        for swap in swaps_file
     ]
-    print(swaps)
+
     longest_swap_maturity = max([s[0].maturityDate() for s in swaps])
     broadcast_dict['longest_swap_maturity'] = quantlib_date_to_datetime(longest_swap_maturity)
 
