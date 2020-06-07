@@ -1,9 +1,17 @@
 ,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17
-type,counterparty,settlement,term,principle,spot,type,curr1,curr2,,,,,,,,,,
-IRS,111,2019-07-06,5Y,1000000,0.0186,Receiver,USD,USD,,,,,,,,,,
-IRS,111,2018-02-03,10Y,2000000,0.0236,Payer,USD,USD,,,,,,,,,,
-type,,settlement,term,principle,spot,curr1,curr2,,,,,,,,,,,
-FXFWD,111,2019-09-28,1Y,430000,1.081566,USD,EUR,,,,,,,,,,,
+type,counterparty,settlement,term,principle,spot,type,curr1,curr2,hw-alpha,hw-sigma,,,,,,,,
+IRS,111,2019-07-06,5Y,1000000,0.0186,Receiver,USD,USD,0.376739,0.0209835,,,,,,,,
+IRS,111,2018-02-03,10Y,2000000,0.0236,Payer,USD,USD,0.376739,0.0209835,,,,,,,,
+IRS,112,2019-07-06,7Y,1000000,0.0186,Receiver,USD,USD,0.376739,0.0209835,,,,,,,,
+IRS,112,2018-02-03,8Y,2000000,0.0236,Payer,USD,USD,0.376739,0.0209835,,,,,,,,
+IRS,113,2019-07-06,7Y,1000000,0.0186,Receiver,USD,USD,0.376739,0.0209835,,,,,,,,
+IRS,113,2018-02-03,8Y,2000000,0.0236,Payer,USD,USD,0.376739,0.0209835,,,,,,,,
+,,,,,,,,,,,,,,,,,,
+type,,settlement,term,principle,spot,curr1,curr2,hw-alpha,hw-sigma,,,,,,,,,
+FXFWD,111,2019-09-28,1Y,430000,1.081566,USD,EUR,0.376739,0.0209835,,,,,,,,,
+FXFWD,112,2019-09-28,2Y,600000,1.0821,USD,EUR,0.376739,0.0209835,,,,,,,,,
+FXFWD,113,2019-09-28,2Y,600000,1.0821,USD,EUR,0.376739,0.0209835,,,,,,,,,
+,,,,,,,,,,,,,,,,,,
 type,,settlement,exercise1,volume,spot,riskfree,bs dividend,bs volatility,x0,x1,beta,eta,jumpIntensity,speed,volatility,sizet,sizex,sizey
 SWING,111,2020-05-01,1/1/21,2000000,1.9,0.1,0,0.2,0.08,0.08,6,5,2.5,1,0.2,25,25,60
 SWING,111,2020-05-17,1/2/21,3000000,2.1,0.1,0,0.2,0.08,0.08,6,5,2.5,1,0.2,25,25,60
