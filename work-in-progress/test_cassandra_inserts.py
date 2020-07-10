@@ -25,6 +25,7 @@ auth_provider = PlainTextAuthProvider(username='Administrator-at-952436753265', 
 cluster = Cluster(['cassandra.ap-southeast-2.amazonaws.com'], ssl_context=ssl_context, auth_provider=auth_provider, port=9142, execution_profiles={EXEC_PROFILE_DEFAULT: profile})
 session = cluster.connect()
 r = session.execute('select * from system.peers')
+r = session.execute('select * from pfe_poc.pfe')
 print(r.current_rows)
 
 
