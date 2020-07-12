@@ -132,7 +132,7 @@ aws emr create-cluster \
 --ec2-attributes '{"KeyName":"*YOUR_KEY*","InstanceProfile":"EMR_EC2_DefaultRole","SubnetId":"subnet-1aa9dc43","EmrManagedSlaveSecurityGroup":"sg-08f83f2680c4721b9","EmrManagedMasterSecurityGroup":"sg-0f4a0166888d51211"}' \
 --release-label emr-6.0.0 \
 --log-uri 's3n://aws-logs-*YOUR_LOG-YOUR_REGION*/elasticmapreduce/' \
---instance-groups '[{"InstanceCount":4,"EbsConfiguration":{"EbsBlockDeviceConfigs":[{"VolumeSpecification":{"SizeInGB":64,"VolumeType":"gp2"},"VolumesPerInstance":4}]},"InstanceGroupType":"CORE","InstanceType":"m5a.4xlarge","Name":"Core - 10"},{"InstanceCount":1,"EbsConfiguration":{"EbsBlockDeviceConfigs":[{"VolumeSpecification":{"SizeInGB":32,"VolumeType":"gp2"},"VolumesPerInstance":2}]},"InstanceGroupType":"MASTER","InstanceType":"m5.xlarge","Name":"Master - 1"}]' \
+--instance-groups '[{"InstanceCount":4,"EbsConfiguration":{"EbsBlockDeviceConfigs":[{"VolumeSpecification":{"SizeInGB":64,"VolumeType":"gp2"},"VolumesPerInstance":4}]},"InstanceGroupType":"CORE","InstanceType":"m5a.4xlarge","Name":"Core - 4"},{"InstanceCount":1,"EbsConfiguration":{"EbsBlockDeviceConfigs":[{"VolumeSpecification":{"SizeInGB":32,"VolumeType":"gp2"},"VolumesPerInstance":2}]},"InstanceGroupType":"MASTER","InstanceType":"m5.xlarge","Name":"Master - 1"}]' \
 --custom-ami-id ami-*YOUR_AMI* \
 --auto-scaling-role EMR_AutoScaling_DefaultRole \
 --ebs-root-volume-size 16 \
@@ -167,7 +167,7 @@ A spark cluster has n nodes managed by a central master. This allows it offer la
 ![Spark Cluster Diagram](https://raw.githubusercontent.com/fordesmith/PotentialFutureExposureAWSSpark/master/visualisations/cluster-overview.png).
 
 
-For the example here, the job completes in ~1.4 minute with 11 workers and ~3.4 minutes with 4 workers. It computes a netting set NPV for 5000 simulations across 454 future dates for three counterparties each with 2-3 swaps and 1 FxFwd. I have not optimised the job, so you may be able to make it run faster and better. 
+For the example here, the job computes a netting set NPV for 5000 simulations across 454 future dates for three counterparties each with 2-3 swaps and 1 FxFwd. The job completed in ~13.2 minutes with 4 workers and 4.2 minutes with 10 workers (with 1 worker per node). This is not a good design as the workers are too big (need more per server). I also tried a higher spec cluster using GPU chips (Executors: 3 x p2.8xlarge 32 vCore, 488 GiB memory, EBS only storage, EBS Storage:256 GiB, Driver: 1 x m5.xlarge 4 vCore, 16 GiB memory, EBS only storage EBS Storage:64 GiB) with 4 workers per node ( 8 CPUs per worker) and the job completed in 1 minute. 
 
 ## Creating the input files
 
