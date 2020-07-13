@@ -164,7 +164,7 @@ Leave other settings as is. Choose "next". In "Additional Options" choose the AM
 
 A spark cluster has n nodes managed by a central master. This allows it offer large scale parallel processing. 
 
-![Spark Cluster Diagram](https://raw.githubusercontent.com/fordesmith/PotentialFutureExposureAWSSpark/master/visualisations/cluster-overview.png).
+![Spark Cluster Diagram](./visualisations/cluster-overview.png).
 
 
 For the example here, the job computes a netting set NPV for 5000 simulations across 454 future dates for three counterparties each with 2-3 swaps and 1 FxFwd. The job completed in ~13.2 minutes with 4 workers and 4.2 minutes with 10 workers (with 1 worker per node). This is not a good design as the workers are too big (need more per server). I also tried a higher spec cluster using GPU chips (Executors: 3 x p2.8xlarge 32 vCore, 488 GiB memory, EBS only storage, EBS Storage:256 GiB, Driver: 1 x m5.xlarge 4 vCore, 16 GiB memory, EBS only storage EBS Storage:64 GiB) with 4 workers per node ( 8 CPUs per worker) and the job completed in 1 minute. 
