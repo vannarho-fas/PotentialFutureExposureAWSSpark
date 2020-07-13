@@ -501,6 +501,7 @@ export HADOOP_CONF_DIR=$HADOOP_HOME/etc/hadoop
 export YARN_CONF_DIR=$HADOOP_HOME/etc/hadoop
 export LD_LIBRARY_PATH=/usr/lib/hadoop/lib/native
 export SPARK_HOME=/usr/lib/spark
+export PFE_HOME=*/path/to/S3orlocal_drive*
 
 # submit Spark job - adjust s3 bucket, filenames and scenario variables as needed
 sudo spark-submit \
@@ -516,12 +517,12 @@ sudo spark-submit \
 --executor-cores 16 \
 --driver-cores 4 \
 --conf spark.default.parallelism=168 \
-s3://*YOUR_S3*/1504_PFE_CALC.py 5000 48 0.376739 0.0209835 \
-s3://*YOUR_S3*/1504_USD_LIB_SWAP_CURVE.csv \
-s3://*YOUR_S3*/1504_EUR_LIB_SWAP_CURVE.csv \
-s3://*YOUR_S3*/1504_USD3MTD156N.csv \
-s3://*YOUR_S3*/1504_INSTRUMENTS.csv \
-s3://*YOUR_S3*/output0105
+$PFE_HOME/1504_PFE_CALC.py 5000 48 0.376739 0.0209835 \
+$PFE_HOME/1504_USD_LIB_SWAP_CURVE.csv \
+$PFE_HOME/1504_EUR_LIB_SWAP_CURVE.csv \
+$PFE_HOME/1504_USD3MTD156N.csv \
+$PFE_HOME/1504_INSTRUMENTS.csv \
+$PFE_HOME/*your_output_dir*
 </pre></code>
 
 Note: this cluster design has not been optimised and is one of the areas I'd like to explore further. 
