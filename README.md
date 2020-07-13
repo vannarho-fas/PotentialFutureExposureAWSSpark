@@ -535,11 +535,11 @@ The program will output something like this:
 * Maximum Uncollateralised PFE @95: $895,831
 * Maximum Collateralised PFE @95:$778,937
 
-![Estimated Potential Exposure](https://raw.githubusercontent.com/fordesmith/PotentialFutureExposureAWSSpark/master/visualisations/simex.png).
+![Estimated Potential Exposure](./visualisations/simex.png).
 
-![Expected Exposure](https://raw.githubusercontent.com/fordesmith/PotentialFutureExposureAWSSpark/master/visualisations/epex.png).
+![Expected Exposure](./visualisations/epex.png).
 
-![Potential Future Exposure - Collatoralised & Uncollateralised](https://raw.githubusercontent.com/fordesmith/PotentialFutureExposureAWSSpark/master/visualisations/pfe.png).
+![Potential Future Exposure - Collatoralised & Uncollateralised](./visualisations/pfe.png).
 
 
 ## Some ideas for ways to extend the POC
