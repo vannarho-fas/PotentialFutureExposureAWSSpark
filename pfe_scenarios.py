@@ -27,6 +27,15 @@ def to_null(c):
     return when(~(col(c).isNull() | isnan(col(c)) | (trim(col(c)) == "")), col(c))
 
 # ++++++++++++++++++++  connect to local Cassandra node (for dev) ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# requires a Cassandra installation and a table to be set up first e.g.
+# CREATE KEYSPACE IF NOT EXISTS poc WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 1 };
+# CREATE TABLE IF NOT EXISTS poc.pfe (
+#   batch_key ascii,
+#   counterparty int,
+#   date ascii,
+#   non_coll_exp double,
+#   coll_exp double,
+#   PRIMARY KEY (batch_key)) ;
 
 def connect_local_cassandra():
     cluster = Cluster()
