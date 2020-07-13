@@ -7,6 +7,10 @@ This covers:
 * The steps needed to build and run the infrastructure and software and then analyse the data outputs
 * The proposed next steps to further extend this POC further
 
+NOTE:
+1. The instructions below cover setting AWS EMR to run a scaled set of scenraios. You can of course run this on your local, however, the set up instructions aren't included here, and if you do I'd recommend reducing the number of scenarios to a lower number e.g. 10-20 rather than 5000 as it will be very S L O W. 
+2. Since writing this I have extended the design further to write out to Cassandra (see the file pfe_scenarios.py). This can be used by adding some additional parameters to the spark-submit job (to pick up the cassandra drivers). 
+
 ## Context (you can skip this bit if you work in capital markets :wink: )
 
 The first decade of the 21st Century was  disastrous for financial institutions, derivatives and risk management. Counterparty credit risk has become the key element of financial risk management, highlighted by the bankruptcy of the investment bank Lehman Brothers and failure of other high profile institutions such as Bear Sterns, AIG, Fannie Mae and Freddie Mac. The sudden realisation of extensive counterparty risks, primarily from OTC products, severely compromised the health of global financial markets. Estimating potential future exposure is now a key task for all financial institutions.
@@ -80,6 +84,8 @@ A firm can often “net” the exposures of different instruments from the same 
 
 ## PFE POC
 
+The instructions below are for running the job on AWS. You can run it on your local machine, but I haven't described this below. You'll need spark 2.4.5 (now a back version - version 3 may not work)and there's lots of resources online for this (e.g. https://medium.com/beeranddiapers/installing-apache-spark-on-mac-os-ce416007d79f)
+
 
 ### We will assume you've done the following
 
@@ -87,6 +93,15 @@ A firm can often “net” the exposures of different instruments from the same 
 * Created a S3 Bucket
 * Created and Downloaded a Key Pair
 * Created A Security Group (optional for this simple proof of concept)
+
+### Version assumptions
+
+* AWS linux 64 bit
+* EMR Version 6
+* Python 3.7+
+* Spark 2.4.5
+* Hadoop 3.2.1
+* Java 8 (if you're using Cassandra 3 on local)
 
 
 ### Launching a EC2 Instance
@@ -132,7 +147,7 @@ aws emr create-cluster \
 --ec2-attributes '{"KeyName":"*YOUR_KEY*","InstanceProfile":"EMR_EC2_DefaultRole","SubnetId":"subnet-1aa9dc43","EmrManagedSlaveSecurityGroup":"sg-08f83f2680c4721b9","EmrManagedMasterSecurityGroup":"sg-0f4a0166888d51211"}' \
 --release-label emr-6.0.0 \
 --log-uri 's3n://aws-logs-*YOUR_LOG-YOUR_REGION*/elasticmapreduce/' \
---instance-groups '[{"InstanceCount":4,"EbsConfiguration":{"EbsBlockDeviceConfigs":[{"VolumeSpecification":{"SizeInGB":64,"VolumeType":"gp2"},"VolumesPerInstance":4}]},"InstanceGroupType":"CORE","InstanceType":"m5a.4xlarge","Name":"Core - 10"},{"InstanceCount":1,"EbsConfiguration":{"EbsBlockDeviceConfigs":[{"VolumeSpecification":{"SizeInGB":32,"VolumeType":"gp2"},"VolumesPerInstance":2}]},"InstanceGroupType":"MASTER","InstanceType":"m5.xlarge","Name":"Master - 1"}]' \
+--instance-groups '[{"InstanceCount":4,"EbsConfiguration":{"EbsBlockDeviceConfigs":[{"VolumeSpecification":{"SizeInGB":64,"VolumeType":"gp2"},"VolumesPerInstance":4}]},"InstanceGroupType":"CORE","InstanceType":"m5a.4xlarge","Name":"Core - 4"},{"InstanceCount":1,"EbsConfiguration":{"EbsBlockDeviceConfigs":[{"VolumeSpecification":{"SizeInGB":32,"VolumeType":"gp2"},"VolumesPerInstance":2}]},"InstanceGroupType":"MASTER","InstanceType":"m5.xlarge","Name":"Master - 1"}]' \
 --custom-ami-id ami-*YOUR_AMI* \
 --auto-scaling-role EMR_AutoScaling_DefaultRole \
 --ebs-root-volume-size 16 \
@@ -164,10 +179,12 @@ Leave other settings as is. Choose "next". In "Additional Options" choose the AM
 
 A spark cluster has n nodes managed by a central master. This allows it offer large scale parallel processing. 
 
-![Spark Cluster Diagram](https://raw.githubusercontent.com/fordesmith/PotentialFutureExposureAWSSpark/master/visualisations/cluster-overview.png).
+![Spark Cluster Diagram](./visualisations/cluster-overview.png).
 
 
-For the example here, the job completes in ~1.4 minute with 11 workers and ~3.4 minutes with 4 workers. It computes a netting set NPV for 5000 simulations across 454 future dates for three counterparties each with 2-3 swaps and 1 FxFwd. I have not optimised the job, so you may be able to make it run faster and better. 
+For the example here, the job computes a netting set NPV for 5000 simulations across 454 future dates for three counterparties each with 2-3 swaps and 1 FxFwd. The job completed in ~13.2 minutes with 4 workers and 4.2 minutes with 10 workers (with 1 worker per node). After reading more (e.g. https://medium.com/datakaresolutions/key-factors-to-consider-when-optimizing-spark-jobs-72b1a0dc22bf) I realised this is not a good design as the workers are too fat (need to have more per server). I then tried a higher spec cluster using GPU chips (Executors: 3 x p2.8xlarge 32 vCore, 488 GiB memory, EBS only storage, EBS Storage:256 GiB, Driver: 1 x m5.xlarge 4 vCore, 16 GiB memory, EBS only storage EBS Storage:64 GiB) with 4 workers per node ( 8 CPUs per worker) and the job completed in 1 minute. 
+
+To speed the job up further I considered using Cython (C-compiled Python) which I believe could provide a further 30%+ improvement by just typing each variable, and more if python-specific routines are optimised. 
 
 ## Creating the input files
 
@@ -234,7 +251,7 @@ def load_counterparties(instruments_file):
     return sorted(cps)
 
 
-# new version - Loads counterparty input swap specifications from input file into an RDD and then collects the results
+# Loads counterparty input swap specifications from input file into an RDD and then collects the results
 def load_counterparty_irs_swaps(instruments_file, counterparty):
     cp_swaps = sc.textFile(instruments_file) \
         .map(lambda line: line.split(",")) \
@@ -252,7 +269,7 @@ def load_counterparty_irs_swaps(instruments_file, counterparty):
 
 
 
-# new version - Loads counterparty FxFwd specifications from input file into an RDD and then collects the results
+# Loads counterparty FxFwd specifications from input file into an RDD and then collects the results
 def load_counterparty_fxfwds(instruments_file,counterparty):
     cp_fxfwds = sc.textFile(instruments_file) \
         .map(lambda line: line.split(",")) \
@@ -501,6 +518,7 @@ export HADOOP_CONF_DIR=$HADOOP_HOME/etc/hadoop
 export YARN_CONF_DIR=$HADOOP_HOME/etc/hadoop
 export LD_LIBRARY_PATH=/usr/lib/hadoop/lib/native
 export SPARK_HOME=/usr/lib/spark
+export PFE_HOME=*/path/to/S3orlocal_drive*
 
 # submit Spark job - adjust s3 bucket, filenames and scenario variables as needed
 sudo spark-submit \
@@ -516,15 +534,33 @@ sudo spark-submit \
 --executor-cores 16 \
 --driver-cores 4 \
 --conf spark.default.parallelism=168 \
-s3://*YOUR_S3*/1504_PFE_CALC.py 5000 48 0.376739 0.0209835 \
-s3://*YOUR_S3*/1504_USD_LIB_SWAP_CURVE.csv \
-s3://*YOUR_S3*/1504_EUR_LIB_SWAP_CURVE.csv \
-s3://*YOUR_S3*/1504_USD3MTD156N.csv \
-s3://*YOUR_S3*/1504_INSTRUMENTS.csv \
-s3://*YOUR_S3*/output0105
+$PFE_HOME/1504_PFE_CALC.py 5000 48 0.376739 0.0209835 \
+$PFE_HOME/1504_USD_LIB_SWAP_CURVE.csv \
+$PFE_HOME/1504_EUR_LIB_SWAP_CURVE.csv \
+$PFE_HOME/1504_USD3MTD156N.csv \
+$PFE_HOME/1504_INSTRUMENTS.csv \
+$PFE_HOME/*your_output_dir*
 </pre></code>
 
 Note: this cluster design has not been optimised and is one of the areas I'd like to explore further. 
+
+If you've like to test using Cassandra on *local* (it currently also writes to csv), then you need a slightly modified spark-submit file to pick up the cassandra drivers. Note some further work is required to connect to AWS keyspaces (AWS managed service for Cassandra) - e.g. see https://docs.aws.amazon.com/keyspaces/latest/devguide/using_python_driver.html
+
+<pre><code>
+
+spark-submit \
+--deploy-mode client \
+--packages com.datastax.spark:spark-cassandra-connector_2.11:2.4.3 \
+--conf spark.cassandra.connection.host=localhost \
+--conf spark.sql.extensions=com.datastax.spark.connector.CassandraSparkExtensions \
+$PFE_PATH/pfe_scenarios.py 10 48 0.376739 0.0209835 \
+$PFE_PATH/1504_USD_LIB_SWAP_CURVE.csv \
+$PFE_PATH/1504_EUR_LIB_SWAP_CURVE.csv \
+$PFE_PATH/1504_USD3MTD156N.csv \
+$PFE_PATH/1504_INSTRUMENTS.csv \
+$PFE_PATH/output090720
+
+</pre></code>
 
 ## Visualising the results
 
@@ -535,11 +571,11 @@ The program will output something like this:
 * Maximum Uncollateralised PFE @95: $895,831
 * Maximum Collateralised PFE @95:$778,937
 
-![Estimated Potential Exposure](https://raw.githubusercontent.com/fordesmith/PotentialFutureExposureAWSSpark/master/visualisations/simex.png).
+![Estimated Potential Exposure](./visualisations/simex.png).
 
-![Expected Exposure](https://raw.githubusercontent.com/fordesmith/PotentialFutureExposureAWSSpark/master/visualisations/epex.png).
+![Expected Exposure](./visualisations/epex.png).
 
-![Potential Future Exposure - Collatoralised & Uncollateralised](https://raw.githubusercontent.com/fordesmith/PotentialFutureExposureAWSSpark/master/visualisations/pfe.png).
+![Potential Future Exposure - Collatoralised & Uncollateralised](./visualisations/pfe.png).
 
 
 ## Some ideas for ways to extend the POC
