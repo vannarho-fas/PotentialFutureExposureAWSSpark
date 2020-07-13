@@ -1,6 +1,9 @@
-# A proof of concept that calculates potential future exposure
-# for a small set of  OTC derivatives
-# using Quantlib, Spark and Amazon EMR
+# ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# ++++++++++++++++++++ A proof of concept that calculates potential future exposure ++++++++++++++++++++++++++++++++++++
+# ++++++++++++++++++++ for a small set of  OTC derivatives  ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# ++++++++++++++++++++ using Quantlib, Spark and Amazon EMR ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 from pyspark.sql.types import StructType, StructField, IntegerType, StringType, DoubleType
 from pyspark.sql.functions import col, isnan, when, trim
@@ -11,7 +14,6 @@ from ssl import SSLContext, PROTOCOL_TLSv1, CERT_REQUIRED
 from cassandra.auth import PlainTextAuthProvider
 from cassandra.cluster import Cluster, ExecutionProfile, EXEC_PROFILE_DEFAULT, ConsistencyLevel
 from cassandra.query import tuple_factory
-
 import QuantLib as ql
 import datetime as dt
 from datetime import datetime as d
@@ -19,10 +21,12 @@ import numpy as np
 import math
 import sys
 
-
+# +++++++++++++++++++++++++++ to remove blank rows in a pyspark dataframe ++++++++++++++++++++++++++++++++++++++++++++++
 
 def to_null(c):
     return when(~(col(c).isNull() | isnan(col(c)) | (trim(col(c)) == "")), col(c))
+
+# ++++++++++++++++++++  connect to local Cassandra node (for dev) ++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 def connect_local_cassandra():
     cluster = Cluster()
@@ -31,7 +35,12 @@ def connect_local_cassandra():
         "INSERT INTO pfe_poc.pfe (batch_key, counterparty, date,non_coll_exp, coll_exp) VALUES (?, ?, ?, ?,?)")
     return session, cluster, exp_insert_stmt
 
-# make connection object for AWS keyspaces
+# ++++++++++++++++++++  makes connection object for AWS keyspaces +++++++++++++++++++++++++++++++++++++++++++++++++++++
+# +++++++++++ Requires Amazon digital certificate... curl https://www.amazontrust.com/repository/AmazonRootCA1.pem -O ++
+# ++++++++++++++++++++ TODO - add AWS credentials / find a way to authenticate without username / password  ++++++++++++
+# see https://docs.aws.amazon.com/keyspaces/latest/devguide/using_python_driver.html +++++++++++++++++++++++++++++++++++
+
+
 def connect_to_aws_keyspaces():
     profile = ExecutionProfile(
         consistency_level=ConsistencyLevel.LOCAL_QUORUM,
@@ -39,17 +48,18 @@ def connect_to_aws_keyspaces():
         row_factory=tuple_factory
     )
     ssl_context = SSLContext(PROTOCOL_TLSv1)
-    # ssl_context.load_verify_locations('/Users/forsmith/Documents/PotentialFutureExposureAWSSpark/AmazonRootCA1.pem')
     ssl_context.load_verify_locations('/home/hadoop/AmazonRootCA1.pem')
     ssl_context.verify_mode = CERT_REQUIRED
-    auth_provider = PlainTextAuthProvider(username='Administrator-at-952436753265',
-                                          password='LEupSM26+oER0WePcyydcaXEmBLu/n3rd7brkC8mtc0=')
+    auth_provider = PlainTextAuthProvider(username='XX',
+                                          password='XX')
     cluster = Cluster(['cassandra.ap-southeast-2.amazonaws.com'], ssl_context=ssl_context, auth_provider=auth_provider,
                       port=9142, execution_profiles={EXEC_PROFILE_DEFAULT: profile})
     session = cluster.connect()
-    exp_insert_stmt = session.prepare("INSERT INTO pfe_poc.pfe (batch_key, counterparty, date,non_coll_exp, coll_exp) VALUES (?, ?, ?, ?,?)")
+    exp_insert_stmt = session\
+        .prepare("INSERT INTO pfe_poc.pfe (batch_key, counterparty, date,non_coll_exp, coll_exp) VALUES (?, ?, ?, ?,?)")
     return session, cluster, exp_insert_stmt
 
+# +++++++++++++++++++++++++++++   write scenario output to cassandra and S3 / filesystem ++++++++++++++++++++++++++++++
 
 def rdd_load_cassandra_write_csv(mc_scenarios_rdd, output_dir, counterparty):
     sqlContext = SQLContext(sc)
@@ -78,7 +88,8 @@ def rdd_load_cassandra_write_csv(mc_scenarios_rdd, output_dir, counterparty):
     df_agg.write.csv(output_dir + '/exposure_scenario_data/' + str(counterparty))
 
 
-# Used in loading the various input text files
+# ++++++++++++++++++++  used in loading the various input text files ++++++++++++++++++++++++++++++++++++++++++++++++++
+
 def value_is_number(s):
     try:
         float(s)
@@ -86,18 +97,20 @@ def value_is_number(s):
     except ValueError:
         return False
 
+# ++++++++++++++++++++   convert QuantLib date to Python date ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-# QuantLib date to Python date
 def quantlib_date_to_datetime(d):
     return dt.datetime(d.year(), d.month(), d.dayOfMonth())
 
 
-# Python date to QuantLib date
+# ++++++++++++++++++++   convert Python date to QuantLib date ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
 def python_to_quantlib_date(d):
     return ql.Date(d.day, d.month, d.year)
 
+# ++++++++++++++++++++  loads libor fixings from input file into an RDD and then collect the results ++++++++++++++++++
 
-# Loads libor fixings from input file into an RDD and then collects the results
 def load_libor_fixings(libor_fixings_file):
     libor_fixings = sc.textFile(libor_fixings_file) \
         .map(lambda line: line.split(",")) \
@@ -108,6 +121,7 @@ def load_libor_fixings(libor_fixings_file):
     fixings = libor_fixings.map(lambda r: r[1]).collect()
     return fixing_dates, fixings
 
+# ++++++++++  loads a list of counterparties from input file into an RDD and then collect the results ++++++++++++++++++
 
 def load_counterparties(instruments_file):
     cps = sc.textFile(instruments_file) \
@@ -120,7 +134,8 @@ def load_counterparties(instruments_file):
     return sorted(cps)
 
 
-# new version - Loads counterparty input swap specifications from input file into an RDD and then collects the results
+# +++++++++++++++  loads swap specifications from input file into an RDD and then collect the results ++++++++++++++++++
+
 def load_counterparty_irs_swaps(instruments_file, counterparty):
     cp_swaps = sc.textFile(instruments_file) \
         .map(lambda line: line.split(",")) \
@@ -136,7 +151,8 @@ def load_counterparty_irs_swaps(instruments_file, counterparty):
     return cp_swaps
 
 
-# new version - Loads counterparty FxFwd specifications from input file into an RDD and then collects the results
+# +++++++++++++ Loads counterparty FxFwd specifications from input file into an RDD and then collects the results++++++
+
 def load_counterparty_fxfwds(instruments_file,counterparty):
     cp_fxfwds = sc.textFile(instruments_file) \
         .map(lambda line: line.split(",")) \
@@ -153,7 +169,7 @@ def load_counterparty_fxfwds(instruments_file,counterparty):
     return cp_fxfwds
 
 
-# Builds a QuantLib swap object from given specification
+# ++++++++++++++++++++ Builds a QuantLib swap object from given specification ++++++++++++++++++++++++++++++++++++++++++
 def create_quantlib_swap_object(today, start, maturity, nominal, fixedRate, index, typ=ql.VanillaSwap.Payer):
     calendar = ql.UnitedStates()
     fixedLegTenor = ql.Period(6, ql.Months)
@@ -189,13 +205,18 @@ def create_quantlib_swap_object(today, start, maturity, nominal, fixedRate, inde
     return swap, [index.fixingDate(x) for x in floatSchedule if index.fixingDate(x) >= today][:-1]
 
 
-# main method invoked by Spark driver program
-def main(sc, args_dict):
-    # Broadcast dictionary object, which will hold various pure python objects
-    # needed by the executors
-    # QuantLib SWIG wrappers require use of broadcast variables in Spark
+# ++++++++++++++++++++ Main method invoked by Spark driver program +++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    # Set up variables and data
+def main(sc, args_dict):
+
+    # ++++++++++++++++++++ Broadcast dictionary object holds various pure python objects +++++++++++++++++++++++++++++++
+    # ++++++++++++++++++++ needed by the executors +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    # ++++++++++++++++++++ QuantLib SWIG wrappers require use of broadcast variables in Spark ++++++++++++++++++++++++++
+    # ++++++++++++++++++++ as they can't be pickled  +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    # ++++++++++++++++++++ General parameters for all the computation ++++++++++++++++++++++++++++++++++++++++++++++++++
+    # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
     cluster = Cluster()
     session = cluster.connect('pfe_poc')
@@ -217,7 +238,8 @@ def main(sc, args_dict):
     instruments_file = args_dict['instruments_file']
     libor_fixings_file = args_dict['libor_fixings_file']
 
-    # Load EUR libor swap curve from input file
+    # ++++++++++++++++++++ Load EUR libor swap curve from input file +++++++++++++++++++++++++++++++++++++++++++++++++++
+
     eur_swap_curve = sc.textFile(args_dict['eur_swap_curve_file']) \
         .map(lambda line: line.split(",")) \
         .filter(lambda r: value_is_number(r[1])) \
@@ -228,7 +250,8 @@ def main(sc, args_dict):
     broadcast_dict['eur_curve_dates'] = eur_curve_dates
     broadcast_dict['eur_disc_factors'] = eur_disc_factors
 
-    # Loads USD libor swap curve from input file
+    # ++++++++++++++++++++ Load USD libor swap curve from input file +++++++++++++++++++++++++++++++++++++++++++++++++++
+
     usd_swap_curve = sc.textFile(args_dict['usd_swap_curve_file']) \
         .map(lambda line: line.split(",")) \
         .filter(lambda r: value_is_number(r[1])) \
@@ -242,10 +265,13 @@ def main(sc, args_dict):
                                       for x in usd_curve_dates], usd_disc_factors, usd_dc, usd_calendar)
     usd_disc_term_structure = ql.RelinkableYieldTermStructureHandle(usd_crv_today)
 
-    # Build the QuantLib index object
+    # ++++++++++++++++++++ Build the QuantLib index object +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
     usdlibor3m = ql.USDLibor(ql.Period(3, ql.Months), usd_disc_term_structure)
 
-    # don't need EUR fixings since we don't have a EUR swap
+    # ++++++++++++++++++++ USD fixings +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    # don't need EUR fixings since we don't have a EUR swap for the limited POC
+
     fixing_dates, fixings = load_libor_fixings(libor_fixings_file)
     fixing_dates = [ql.DateParser.parseFormatted(r, '%Y-%m-%d') for r in fixing_dates]
     three_month_old_date = usd_calendar.advance(today, -90, ql.Days, ql.ModifiedFollowing)
@@ -255,15 +281,19 @@ def main(sc, args_dict):
     broadcast_dict['fixing_dates'] = [quantlib_date_to_datetime(x) for x in latestfixing_dates]
     broadcast_dict['fixings'] = latestFixings
 
-    # load counter parties
+    # ++++++++++++++++++++ Load counter parties ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
     counterparties = load_counterparties(instruments_file)
     broadcast_dict['counterparties'] = counterparties
 
+    # ++++++++++++++++++++ Core loop for each counterparty +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
     for counterparty in counterparties:
+
+    # ++++++++++++++++++++ Gather product lists ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
         swaps_list = load_counterparty_irs_swaps(instruments_file, counterparty)
         broadcast_dict['swaps'] = swaps_list
-
         fxfwds = load_counterparty_fxfwds(instruments_file,counterparty)
         broadcast_dict['fxfwds'] = fxfwds
 
@@ -284,39 +314,41 @@ def main(sc, args_dict):
         broadcast_dict['a'] = a
         broadcast_dict['sigma'] = sigma
 
-    # Simulate swap NPVs until we reach the longest maturity
+    # ++++++++++++++++++++ Simulate swap NPVs until we reach the longest maturity ++++++++++++++++++++++++++++++++++++++
         years_to_sim = math.ceil(ql.Actual360().yearFraction(today, longest_swap_maturity))
         dates = [today + ql.Period(i, ql.Weeks) for i in range(0, 52 * int(years_to_sim))]
 
-    # Ad swap reset dates to our universe of dates
+    # ++++++++++++++++++++ Ad swap reset dates to our universe of dates ++++++++++++++++++++++++++++++++++++++++++++++++
         for idx in range(len(swaps)):
             dates += swaps[idx][1]
         dates = np.unique(np.sort(dates))
         broadcast_dict['dates'] = [quantlib_date_to_datetime(x) for x in dates]
         br_dict = sc.broadcast(broadcast_dict)
 
-    # Write out the time grid to a text file which can be parsed later
+    # ++++++++++++++++++++ Write out the time grid to a text file which can be parsed later ++++++++++++++++++++++++++++
         T = [ql.Actual360().yearFraction(today, dates[i]) for i in range(1, len(dates))]
         temp_rdd = sc.parallelize(T)
 
-    # coalesce with shrink the partition size to 1 so we have only 1 file to write and parse later
+    # ++++++++++++++++++++ coalesce with shrink the partition size to 1 so we have only 1 file to write and parse later
         temp_rdd.coalesce(1).saveAsTextFile(output_dir + '/time_curve/' + str(counterparty))
 
-    # The main routine, generate a matrix of normally distributed random numbers and
-    # spread them across the cluster
+    # ++++++++++++++++++++ The main routine, generate a matrix of normally distributed random numbers+++++++++++++++++++
+    # ++++++++++++++++++++ spread them across the cluster ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
         random_array_rdd = RandomRDDs.normalVectorRDD(sc, Nsim, len(T), seed=1)
 
-    # for each row of the matrix, which corresponds to one simulated path,
-    # compute netting set NPV (collateralised and uncollateralised)
+    # +++++++++++++ For each row of the matrix, which corresponds to one simulated path,++++++++++++++++++++++++++++++++
+    # +++++++++++++ compute netting set NPV (collateralised and uncollateralised) ++++++++++++++++++++++++++++++++++++++
 
-        mc_scenarios = random_array_rdd.map(lambda p: (calculate_potential_future_exposure(p, T, br_dict, counterparty))).collect()
+        mc_scenarios = random_array_rdd\
+            .map(lambda p: (calculate_potential_future_exposure(p, T, br_dict, counterparty)))\
+            .collect()
 
-    # convert list of npvs to a rdd
+    # ++++++++++++++++++++ convert list of npvs to a pipelined rdd +++++++++++++++++++++++++++++++++++++++++++++++++++++
 
         mc_scenarios_rdd = sc.parallelize(mc_scenarios)
 
-    # write rdd to Cassandra and CSV on s3 (expect won`t be needed later)
+    # ++++++++++++++++++++ write rdd to Cassandra and CSV on s3 (expect the latter won`t be needed later) ++++++++++++++
 
         rdd_load_cassandra_write_csv(mc_scenarios_rdd, output_dir, counterparty)
 
@@ -324,8 +356,10 @@ def main(sc, args_dict):
 
 
 def calculate_potential_future_exposure(random_numbers, time_grid, br_dict,counterparty):
-    # get hold of broadcasted dictionary and rebuild the curves, libor index, swaps and FxFwd
-    # we need to do this since QuantLib SWIG objects cannot be passed around
+
+    # ++++++++++++++++++++ Main montecarlo scenario loop for each counterparty, outputs NPVs for each time period  +++++
+    # ++++++++++++++++++++ get hold of broadcasted dictionary and rebuild the curves, libor index, swaps and FxFwd +++++
+    # ++++++++++++++++++++ we need to do this since QuantLib SWIG objects cannot be passed around ++++++++++++++++++++++
 
     broadcast_dict = br_dict.value
     today = python_to_quantlib_date(broadcast_dict['python_today'])
@@ -363,7 +397,7 @@ def calculate_potential_future_exposure(random_numbers, time_grid, br_dict,count
     usdlibor3m.addFixings(fixing_dates, fixings)
     engine = ql.DiscountingSwapEngine(usd_disc_term_structure)
     swaps_list = broadcast_dict['swaps']
-    # cp_num = [x[0] for x in swaps_list]
+
 
     swaps = [
         create_quantlib_swap_object(today, ql.DateParser.parseFormatted(swap[1], '%Y-%m-%d'),
@@ -372,7 +406,7 @@ def calculate_potential_future_exposure(random_numbers, time_grid, br_dict,count
         for swap in swaps_list
     ]
 
-    # There is only one fxfwd in the instruments file for this limited POC
+    # ++++++++++++++++++++ There is only one fxfwd in the instruments file for this limited POC+++++++++++++++++++++++++
     fxfwds = broadcast_dict['fxfwds']
     fx_startdate = ql.DateParser.parseFormatted(fxfwds[0][1], '%Y-%m-%d')
     fx_tenor = ql.Period(fxfwds[0][2])
@@ -380,16 +414,18 @@ def calculate_potential_future_exposure(random_numbers, time_grid, br_dict,count
     fwd_rate = fxfwds[0][4]
     fx_maturity = usd_calendar.advance(fx_startdate, fx_tenor, ql.Following)
 
-    # define the NPV cube array
-    # number of rows = number of dates in time-grid
-    # number of columns = 2 (collateralised and uncollateralised NPV) # add reference
+    # ++++++++++++++++++++ define the NPV cube array +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    # ++++++++++++++++++++ number of rows = number of dates in time-grid +++++++++++++++++++++++++++++++++++++++++++++++
+    # ++++++++++++++++++++ number of columns = 2 (collateralised and uncollateralised NPV) # add reference +++++++++++++
+    # ++++++++++++++++++++  TO DO - remove this once further testing done ++++++++++++++++++++++++++++++++++++++++++++++
+
     npvMat = np.zeros((len(time_grid), 2), dtype=np.float64)
 
-    # testing - create a numpy array for an extended record of each scenario to eventually save to Cassandra
+    # ++++++++++++++++++++ create a numpy array for an extended record of each scenario to eventually save to Cassandra
     d_type = 'U80, i8,U40, f8, f8'
     npv_scenario = np.zeros((len(time_grid)), dtype=d_type)
 
-    # utility method to calc FxFwd exposure
+    # ++++++++++++++++++++ utility method to calc FxFwd exposure++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     def fxfwd_exposure(date, spot, usd_curve):
         usd_zero_rate = usd_curve.zeroRate(usd_dc.yearFraction(date, fx_maturity),
                                            ql.Compounded, ql.Annual).rate()
@@ -399,7 +435,7 @@ def calculate_potential_future_exposure(random_numbers, time_grid, br_dict,count
         fxfwd_exp = (fx_notional * eurusd_fx_spot) - fxfwd_npv
         return fxfwd_exp
 
-    # Intialize NPV cube with today's NPVs
+    # ++++++++++++++++++++ Intialize NPV cube with today's NPVs++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     nettingset_npv = 0.
     for idx in range(len(swaps)):
         swaps[idx][0].setPricingEngine(engine)
@@ -408,7 +444,7 @@ def calculate_potential_future_exposure(random_numbers, time_grid, br_dict,count
     nettingset_npv += fxfwd_exp
     npvMat[0, 0] = nettingset_npv
 
-    # assume 100K collateral has been posted already
+    # ++++++++++++++++++++ assume 100K collateral has been posted already+++++++++++++++++++++++++++++++++++++++++++++++
     npvMat[0, 1] = nettingset_npv - 100000.0
 
     batch_key = str(d.now()) + '_' + str(counterparty) + '_' + str(random_numbers[0]) + '_' + str(time_grid[0])
@@ -418,7 +454,7 @@ def calculate_potential_future_exposure(random_numbers, time_grid, br_dict,count
     npv_scenario[0][3] = npvMat[0, 0]
     npv_scenario[0][4] = npvMat[0, 1]
 
-    # Hull White parameter estimations
+    # ++++++++++++++++++++ Hull White parameter estimations++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     def gamma(t):
         forwardRate = usd_t0_curve.forwardRate(t, t, ql.Continuous, ql.NoFrequency).rate()
         temp = sigma * (1.0 - np.exp(- a * t)) / a
@@ -441,7 +477,7 @@ def calculate_potential_future_exposure(random_numbers, time_grid, br_dict,count
     spotmat = np.zeros(shape=(len(time_grid)))
     spotmat[:] = eurusd_fx_spot
 
-    # Notional Credit Support Annex terms for collateral
+    # ++++++++++++++++++++ Notional Credit Support Annex terms for collateral+++++++++++++++++++++++++++++++++++++++++++
     IA1 = 0;
     IA2 = 0;
     threshold1 = 100000.0;
@@ -451,10 +487,10 @@ def calculate_potential_future_exposure(random_numbers, time_grid, br_dict,count
     rounding = 5000.0
     collateral_held = IA2 - IA1
 
-    # assume collateral posted last week was 100K
+    # ++++++++++++++++++++ assume collateral posted last week was 100K++++++++++++++++++++++++++++++++++++++++++++++++++
     collateral_posted = 100000.0
 
-    # the main loop of NPV computations
+    # ++++++++++++++++++++ the main loop of NPV computations++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     for iT in range(1, len(time_grid)):
         mean = usd_rmat[iT - 1] * np.exp(- a * (time_grid[iT] - time_grid[iT - 1])) + \
                gamma(time_grid[iT]) - gamma(time_grid[iT - 1]) * \
@@ -463,7 +499,8 @@ def calculate_potential_future_exposure(random_numbers, time_grid, br_dict,count
         var = 0.5 * sigma * sigma / a * (1 - np.exp(-2 * a * (time_grid[iT] - time_grid[iT - 1])))
         rnew = mean + random_numbers[iT - 1] * np.sqrt(var)
         usd_rmat[iT] = rnew
-        # USD discount factors as generated by HW model
+
+        # ++++++++++++++++++++  USD discount factors as generated by HW model+++++++++++++++++++++++++++++++++++++++++++
         usd_disc_factors = [1.0] + [A(time_grid[iT], time_grid[iT] + k) *
                                     np.exp(- B(time_grid[iT], time_grid[iT] + k) * rnew) for k in
                                     range(1, maturity + 1)]
@@ -476,7 +513,7 @@ def calculate_potential_future_exposure(random_numbers, time_grid, br_dict,count
         rnew = mean + random_numbers[iT - 1] * np.sqrt(var)
         eur_rmat[iT] = rnew
 
-        # EUR discount factors as generated by HW model
+        # ++++++++++++++++++++ EUR discount factors as generated by HW model++++++++++++++++++++++++++++++++++++++++++++
         eur_disc_factors = [1.0] + [A(time_grid[iT], time_grid[iT] + k) *
                                     np.exp(- B(time_grid[iT], time_grid[iT] + k) * rnew) for k in
                                     range(1, maturity + 1)]
@@ -484,11 +521,12 @@ def calculate_potential_future_exposure(random_numbers, time_grid, br_dict,count
         if dates[iT].serialNumber() > longest_swap_maturity.serialNumber():
             break
 
-        # Reset the valuation date
+        # ++++++++++++++++++++ Reset the valuation date+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         ql.Settings.instance().setEvaluationDate(dates[iT])
         crv_date = dates[iT]
         crv_dates = [crv_date] + [crv_date + ql.Period(k, ql.Years) for k in range(1, maturity + 1)]
-        # use the new disc factors to build a new simulated curve
+
+        # ++++++++++++++++++++  use the new disc factors to build a new simulated curve+++++++++++++++++++++++++++++++++
         usd_crv = ql.DiscountCurve(crv_dates, usd_disc_factors, ql.Actual365Fixed(), ql.UnitedStates())
         usd_crv.enableExtrapolation()
         eur_crv = ql.DiscountCurve(crv_dates, eur_disc_factors, ql.ActualActual(), ql.TARGET())
@@ -498,12 +536,13 @@ def calculate_potential_future_exposure(random_numbers, time_grid, br_dict,count
         usdlibor3m.addFixings(fixing_dates, fixings)
         swap_engine = ql.DiscountingSwapEngine(usd_disc_term_structure)
 
-        # build Garman-Kohlagen process for FX rate simulation for FxFwd
+        # ++++++++++++++++++++ build Garman-Kohlagen process for FX rate simulation for FxFwd+++++++++++++++++++++++++++
         gk_process = ql.GarmanKohlagenProcess(ql.QuoteHandle(ql.SimpleQuote(eurusd_fx_spot)),
                                               usd_disc_term_structure, eur_disc_term_structure, flat_vol_hyts)
         dt = time_grid[iT] - time_grid[iT - 1]
         spotmat[iT] = gk_process.evolve(time_grid[iT - 1], spotmat[iT - 1], dt, random_numbers[iT - 1])
         nettingset_npv = 0.
+
         for s in range(len(swaps)):
             if usdlibor3m.isValidFixingDate(dates[iT]):
                 fixing = usdlibor3m.fixing(dates[iT])
@@ -515,13 +554,12 @@ def calculate_potential_future_exposure(random_numbers, time_grid, br_dict,count
             fxfwd_exp = fxfwd_exposure(dates[iT], spotmat[iT], usd_crv)
             nettingset_npv += fxfwd_exp
 
-        # Uncollateralised netting set NPV
-        npvMat[iT, 0] = nettingset_npv
+        # ++++++++++++++++++++ Uncollateralised netting set NPV+++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
         collateral_held = collateral_held + collateral_posted
         nettingset_npv = nettingset_npv + IA2 - IA1
 
-        # Eq. 8.6 Jon Gregory Counterparty CVA book 2nd edition
+        # ++++++++++++++++++++ Eq. 8.6 Jon Gregory Counterparty CVA book 2nd edition++++++++++++++++++++++++++++++++++++
         collateral_required = max(nettingset_npv - threshold2, 0) \
                               - max(-nettingset_npv - threshold1, 0) - collateral_held
         collateral_posted = collateral_required
@@ -535,7 +573,8 @@ def calculate_potential_future_exposure(random_numbers, time_grid, br_dict,count
         if collateral_posted < 0:
             collateral_held = collateral_held + collateral_posted
             collateral_posted = 0.
-        # collateralized netting set NPV
+
+        # ++++++++++++++++++++ collateralised netting set NPV+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         npvMat[iT, 1] = nettingset_npv - collateral_held
 
         batch_key = str(d.now()) + '_' + str(counterparty) + '_' + str(random_numbers[iT]) + '_' + str(time_grid[iT])
@@ -550,7 +589,18 @@ def calculate_potential_future_exposure(random_numbers, time_grid, br_dict,count
 
 if __name__ == "__main__":
     if len(sys.argv) != 10:
-        print('Usage: ' + sys.argv[0] + ' <num_of_simulations> <num_of_partitions> <hull_white_a> <hull_white_sigma> <usd_swap_curve><eur_swap_curve><libor_fixings><instruments><output_dir>')
+        print('Usage: ' +
+              sys.argv[0] +
+              '<num_of_simulations>' +
+              ' <num_of_partitions>' +
+              '<hull_white_a>' +
+              '<hull_white_sigma>' +
+              '<usd_swap_curve>' +
+              '<eur_swap_curve>' +
+              '<libor_fixings>' +
+              '<instruments> +'
+              '<output_dir>')
+
         sys.exit(1)
 
     conf = SparkConf().setAppName("PFE-POC")

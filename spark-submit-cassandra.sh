@@ -1,4 +1,4 @@
-# Adjust environment variables as needed
+ # Adjust environment variables as needed
 export PYSPARK_DRIVER_PYTHON=/usr/bin/python3
 export PYSPARK_PYTHON=python3
 export PYTHONPATH=/usr/bin/python3
