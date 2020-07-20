@@ -5,7 +5,7 @@
 This covers:
 * The methods used for determing the potential exposure over different time periods for different over-the-counter ("OTC") products (for this exercise, two interest rates swaps and one foreign exchange forward ("FXFwd") - includes basic netting, collateral
 * The steps needed to build and run the infrastructure and software and then analyse the data outputs
-* The proposed next steps to further extend this POC further
+* Thoughts on extending this POC 
 
 NOTE:
 1. The instructions below cover setting AWS EMR to run a scaled set of scenarios. You can of course run this on your local, however, the set up instructions aren't included here, and if you do I'd recommend reducing the number of scenarios to a lower number e.g. 10-20 rather than 5000 as it will be very S L O W. 
