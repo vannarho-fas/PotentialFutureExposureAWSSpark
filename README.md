@@ -9,7 +9,7 @@ This covers:
 
 NOTE:
 1. The instructions below cover setting AWS EMR to run a scaled set of scenarios. You can of course run this on your local, however, the set up instructions aren't included here (e.g. how to install spark, hadoop, etc). If you do I'd recommend reducing the number of scenarios to a lower number e.g. 10-20 rather than 5000 as it will be very S L O W. 
-2. Since writing this I have experimented with the design further to write out to Cassandra (see the files pfe_scenarios.py and spark-submit-cassandra.sh). This can be used on local by setting up a local Cassandra node, setting up a keyspace and table with a matching schema to the pyspark dataframe, and by adding some additional parameters to the spark-submit job (to pick up the cassandra drivers). Using it on AWS requires some additional credentials and set up of AWS keyspaces. I haven't documented instructions for this here. 
+2. Since writing this I have experimented with the design further to write out to Cassandra (see the files PFE_CALC_CASS.py and spark-submit-cassandra.sh). This can be used on local by setting up a local Cassandra node, setting up a keyspace and table with a matching schema to the pyspark dataframe, and by adding some additional parameters to the spark-submit job (to pick up the cassandra drivers). Using it on AWS requires some additional credentials and set up of AWS keyspaces. I haven't documented instructions for this here. 
 
 ## Context (you can skip this bit if you work in capital markets :wink: )
 
