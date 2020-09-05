@@ -1,6 +1,18 @@
 # A proof of concept that calculates potential future exposure
 # for a small set of  OTC derivatives
 # using Quantlib, Spark and Amazon EMR
+# Note: requires a local (or AWS) instance of Cassandra set up as:
+# CREATE KEYSPACE IF NOT EXISTS poc WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 1 };
+# CREATE TABLE IF NOT EXISTS poc.pfe (
+#    batch_key ascii,
+#    counterparty int,
+#    date ascii,
+#    time_grid double,
+#    non_coll_exp double,
+#    coll_exp double,
+#    PRIMARY KEY (batch_key, date, time_grid, counterparty,non_coll_exp,coll_exp)
+# ) WITH CLUSTERING ORDER BY (date asc, time_grid DESC);
+
 
 from pyspark.sql.types import StructType, StructField, IntegerType, StringType, DoubleType
 from pyspark.sql.functions import col, isnan, when, trim
@@ -11,7 +23,6 @@ from ssl import SSLContext, PROTOCOL_TLSv1, CERT_REQUIRED
 from cassandra.auth import PlainTextAuthProvider
 from cassandra.cluster import Cluster, ExecutionProfile, EXEC_PROFILE_DEFAULT, ConsistencyLevel
 from cassandra.query import tuple_factory
-
 import QuantLib as ql
 import datetime as dt
 from datetime import datetime as d
@@ -26,10 +37,8 @@ def to_null(c):
 
 def connect_local_cassandra():
     cluster = Cluster()
-    session = cluster.connect('pfe_poc')
-    exp_insert_stmt = session.prepare(
-        "INSERT INTO pfe_poc.pfe (batch_key, counterparty, date,non_coll_exp, coll_exp) VALUES (?, ?, ?, ?,?)")
-    return session, cluster, exp_insert_stmt
+    session = cluster.connect('poc')
+    return session, cluster
 
 # make connection object for AWS keyspaces
 def connect_to_aws_keyspaces():
@@ -42,13 +51,12 @@ def connect_to_aws_keyspaces():
     # ssl_context.load_verify_locations('/Users/forsmith/Documents/PotentialFutureExposureAWSSpark/AmazonRootCA1.pem')
     ssl_context.load_verify_locations('/home/hadoop/AmazonRootCA1.pem')
     ssl_context.verify_mode = CERT_REQUIRED
-    auth_provider = PlainTextAuthProvider(username='Administrator-at-952436753265',
-                                          password='LEupSM26+oER0WePcyydcaXEmBLu/n3rd7brkC8mtc0=')
+    auth_provider = PlainTextAuthProvider(username='',
+                                          password='')
     cluster = Cluster(['cassandra.ap-southeast-2.amazonaws.com'], ssl_context=ssl_context, auth_provider=auth_provider,
                       port=9142, execution_profiles={EXEC_PROFILE_DEFAULT: profile})
     session = cluster.connect()
-    exp_insert_stmt = session.prepare("INSERT INTO pfe_poc.pfe (batch_key, counterparty, date,non_coll_exp, coll_exp) VALUES (?, ?, ?, ?,?)")
-    return session, cluster, exp_insert_stmt
+    return session, cluster
 
 
 def rdd_load_cassandra_write_csv(mc_scenarios_rdd, output_dir, counterparty):
@@ -58,6 +66,7 @@ def rdd_load_cassandra_write_csv(mc_scenarios_rdd, output_dir, counterparty):
         StructField("batch_key", StringType(), True),
         StructField("counterparty", IntegerType(), True),
         StructField("date", StringType(), True),
+        StructField("time_grid", DoubleType(), True),
         StructField("non_coll_exp", DoubleType(), True),
         StructField("coll_exp", DoubleType(), True)
     ])
@@ -68,7 +77,7 @@ def rdd_load_cassandra_write_csv(mc_scenarios_rdd, output_dir, counterparty):
         row_data = mc_scenarios_rdd.collect()[row_num]
         row_data_rdd = sc.parallelize(row_data)
         df = row_data_rdd.map(lambda x: x.tolist()).toDF(
-            ["batch_key", "counterparty", "date", "non_coll_exp", "coll_exp"])
+            ["batch_key", "counterparty", "date", "time_grid", "non_coll_exp", "coll_exp"])
         df = df.select([to_null(c).alias(c) for c in df.columns]).na.drop()
         df.write.format("org.apache.spark.sql.cassandra").option("table", "pfe").option("keyspace", "poc").mode(
             "Append").save()
@@ -198,11 +207,11 @@ def main(sc, args_dict):
     # Set up variables and data
 
     cluster = Cluster()
-    session = cluster.connect('pfe_poc')
+    session = cluster.connect('poc')
     spark = SparkSession(sc)
-    output_dir = '/Users/forsmith/Documents/PotentialFutureExposureAWSSpark/output050720'
-    session, cluster, exp_insert_stmt = connect_local_cassandra()
-    # session, cluster, exp_insert_stmt = connect_to_aws_keyspaces()
+
+    session, cluster = connect_local_cassandra()
+    # session, cluster = connect_to_aws_keyspaces()
 
     broadcast_dict = {}
     pytoday = dt.datetime(2020, 4, 7)
@@ -214,6 +223,7 @@ def main(sc, args_dict):
     eurusd_fx_spot = ql.SimpleQuote(1.1856)
     broadcast_dict['eurusd_fx_spot'] = eurusd_fx_spot.value()
     output_dir = args_dict['output_dir']
+    broadcast_dict['batch_key'] = args_dict['batch_key']
     instruments_file = args_dict['instruments_file']
     libor_fixings_file = args_dict['libor_fixings_file']
 
@@ -320,6 +330,7 @@ def main(sc, args_dict):
 
         rdd_load_cassandra_write_csv(mc_scenarios_rdd, output_dir, counterparty)
 
+        # redundant - leaving in for reference, for now
         # mc_scenarios_rdd.map(lambda x: ",".join(map(str, x))).coalesce(1).saveAsTextFile(output_dir + '/exposure_scenario_data/' + str(counterparty))
 
 
@@ -336,6 +347,7 @@ def calculate_potential_future_exposure(random_numbers, time_grid, br_dict,count
     eur_dc = ql.ActualActual()
 
     maturity = 10
+    batch_key = broadcast_dict['batch_key']
     a = broadcast_dict['a']
     sigma = broadcast_dict['sigma']
     dates = [python_to_quantlib_date(x) for x in broadcast_dict['dates']]
@@ -386,7 +398,7 @@ def calculate_potential_future_exposure(random_numbers, time_grid, br_dict,count
     npvMat = np.zeros((len(time_grid), 2), dtype=np.float64)
 
     # testing - create a numpy array for an extended record of each scenario to eventually save to Cassandra
-    d_type = 'U80, i8,U40, f8, f8'
+    d_type = 'U80, i8,U40, f8, f8, f8'
     npv_scenario = np.zeros((len(time_grid)), dtype=d_type)
 
     # utility method to calc FxFwd exposure
@@ -411,12 +423,12 @@ def calculate_potential_future_exposure(random_numbers, time_grid, br_dict,count
     # assume 100K collateral has been posted already
     npvMat[0, 1] = nettingset_npv - 100000.0
 
-    batch_key = str(d.now()) + '_' + str(counterparty) + '_' + str(random_numbers[0]) + '_' + str(time_grid[0])
     npv_scenario[0][0] = batch_key
     npv_scenario[0][1] = counterparty
     npv_scenario[0][2] = str(d.now())
-    npv_scenario[0][3] = npvMat[0, 0]
-    npv_scenario[0][4] = npvMat[0, 1]
+    npv_scenario[0][3] = time_grid[0]
+    npv_scenario[0][4] = npvMat[0, 0]
+    npv_scenario[0][5] = npvMat[0, 1]
 
     # Hull White parameter estimations
     def gamma(t):
@@ -538,19 +550,19 @@ def calculate_potential_future_exposure(random_numbers, time_grid, br_dict,count
         # collateralized netting set NPV
         npvMat[iT, 1] = nettingset_npv - collateral_held
 
-        batch_key = str(d.now()) + '_' + str(counterparty) + '_' + str(random_numbers[iT]) + '_' + str(time_grid[iT])
         npv_scenario[iT][0] = batch_key
         npv_scenario[iT][1] = counterparty
         npv_scenario[iT][2] = str(d.now())
-        npv_scenario[iT][3] = npvMat[iT, 0]
-        npv_scenario[iT][4] = npvMat[iT, 1]
+        npv_scenario[iT][3] = time_grid[iT]
+        npv_scenario[iT][4] = npvMat[iT, 0]
+        npv_scenario[iT][5] = npvMat[iT, 1]
 
     return npv_scenario
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 10:
-        print('Usage: ' + sys.argv[0] + ' <num_of_simulations> <num_of_partitions> <hull_white_a> <hull_white_sigma> <usd_swap_curve><eur_swap_curve><libor_fixings><instruments><output_dir>')
+    if len(sys.argv) != 11:
+        print('Usage: ' + sys.argv[0] + ' <num_of_simulations> <num_of_partitions> <hull_white_a> <hull_white_sigma> <usd_swap_curve><eur_swap_curve><libor_fixings><instruments><output_dir><batch_id>')
         sys.exit(1)
 
     conf = SparkConf().setAppName("PFE-POC")
@@ -566,7 +578,8 @@ if __name__ == "__main__":
             'eur_swap_curve_file': sys.argv[6],
             'libor_fixings_file': sys.argv[7],
             'instruments_file': sys.argv[8],
-            'output_dir': sys.argv[9]}
+            'output_dir': sys.argv[9],
+            'batch_key': sys.argv[10]}
 
     main(sc, args)
 
